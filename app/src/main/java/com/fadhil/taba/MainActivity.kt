@@ -4,13 +4,12 @@ import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.padding
-import androidx.compose.material3.Scaffold
-import androidx.compose.material3.Text
-import androidx.compose.runtime.Composable
-import androidx.compose.ui.Modifier
-import androidx.compose.ui.tooling.preview.Preview
+import androidx.compose.runtime.*
+import androidx.lifecycle.viewmodel.compose.viewModel
+import com.fadhil.taba.ui.auth.AuthViewModel
+import com.fadhil.taba.ui.auth.LoginScreen
+import com.fadhil.taba.ui.auth.WelcomeScreen
+import com.fadhil.taba.ui.dashboard.DashboardScreen
 import com.fadhil.taba.ui.theme.TabaTheme
 
 class MainActivity : ComponentActivity() {
@@ -19,29 +18,51 @@ class MainActivity : ComponentActivity() {
         enableEdgeToEdge()
         setContent {
             TabaTheme {
-                Scaffold(modifier = Modifier.fillMaxSize()) { innerPadding ->
-                    Greeting(
-                        name = "Fathurrahman Naufal ",
-                        modifier = Modifier.padding(innerPadding)
-                    )
-                }
+                TabaApp()
             }
         }
     }
 }
 
 @Composable
-fun Greeting(name: String, modifier: Modifier = Modifier) {
-    Text(
-        text = "Hello $name!",
-        modifier = modifier
-    )
+fun TabaApp() {
+    val authViewModel: AuthViewModel = viewModel()
+    val currentUser by authViewModel.currentUser.collectAsState()
+    
+    // State Navigasi Sederhana
+    var currentScreen by remember { mutableStateOf<Screen>(Screen.Welcome) }
+
+    // Jika user sudah login, arahkan ke Dashboard
+    LaunchedEffect(currentUser) {
+        if (currentUser != null) {
+            currentScreen = Screen.Dashboard
+        } else if (currentScreen == Screen.Dashboard) {
+            currentScreen = Screen.Welcome
+        }
+    }
+
+    when (val screen = currentScreen) {
+        Screen.Welcome -> {
+            WelcomeScreen(
+                viewModel = authViewModel,
+                onLoginSuccess = { currentScreen = Screen.Dashboard }
+            )
+        }
+        is Screen.Login -> {
+            // Screen Login email sudah tidak digunakan, arahkan balik ke Welcome jika terpanggil
+            currentScreen = Screen.Welcome
+        }
+        Screen.Dashboard -> {
+            DashboardScreen(
+                authViewModel = authViewModel,
+                onSignOut = { currentScreen = Screen.Welcome }
+            )
+        }
+    }
 }
 
-@Preview(showBackground = true)
-@Composable
-fun GreetingPreview() {
-    TabaTheme {
-        Greeting("Android")
-    }
+sealed class Screen {
+    object Welcome : Screen()
+    data class Login(val isSignUp: Boolean) : Screen()
+    object Dashboard : Screen()
 }

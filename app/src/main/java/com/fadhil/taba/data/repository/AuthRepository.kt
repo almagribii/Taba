@@ -64,11 +64,11 @@ class AuthRepository {
     suspend fun signInWithGoogle(context: Context, serverClientId: String) {
         val credentialManager = CredentialManager.create(context)
         
-        // Kita coba buat opsi TANPA nonce dulu untuk testing jika macet
+        // Agar bisa milih akun lain saat login ulang
         val googleIdOption = GetGoogleIdOption.Builder()
             .setFilterByAuthorizedAccounts(filterByAuthorizedAccounts = false)
             .setServerClientId(serverClientId)
-            .setAutoSelectEnabled(false)
+            .setAutoSelectEnabled(false) // MATIKAN AUTO SELECT
             .build()
 
         val request = GetCredentialRequest.Builder()
@@ -113,9 +113,14 @@ class AuthRepository {
     }
 
     suspend fun signOut(context: Context) {
-        auth.signOut()
-        val credentialManager = CredentialManager.create(context)
-        credentialManager.clearCredentialState(ClearCredentialStateRequest())
-        _currentUser.value = null
+        try {
+            auth.signOut()
+            val credentialManager = CredentialManager.create(context)
+            credentialManager.clearCredentialState(ClearCredentialStateRequest())
+            _currentUser.value = null
+            println("TABA_DEBUG: Logout berhasil dan session dibersihkan")
+        } catch (e: Exception) {
+            println("TABA_DEBUG: Logout error: ${e.message}")
+        }
     }
 }

@@ -1,7 +1,6 @@
 package com.fadhil.taba.ui.auth
 
 import androidx.compose.foundation.Image
-import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.*
@@ -38,76 +37,37 @@ fun WelcomeScreen(
     }
 
     Box(
-        modifier = Modifier
-            .fillMaxSize()
-            .background(Color(0xFFF9F7F2))
+        modifier = Modifier.fillMaxSize()
     ) {
+        // Full Background Image
+        Image(
+            painter = painterResource(id = R.drawable.welcome),
+            contentDescription = null,
+            modifier = Modifier.fillMaxSize(),
+            contentScale = ContentScale.FillBounds
+        )
+
+        // Overlay Content (Button and Error)
         Column(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(24.dp),
-            horizontalAlignment = Alignment.CenterHorizontally
+                .padding(horizontal = 24.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.Bottom
         ) {
-            Spacer(modifier = Modifier.height(60.dp))
-            
-            Text(
-                text = "TABA",
-                fontSize = 48.sp,
-                fontWeight = FontWeight.Bold,
-                color = GreenPrimary,
-                letterSpacing = 4.sp
-            )
-            
-            Text(
-                text = "تَكَلَّمْ بِالْعَرَبِيَّة",
-                fontSize = 24.sp,
-                color = GreenPrimary
-            )
-
-            Spacer(modifier = Modifier.weight(1f))
-
-            Image(
-                painter = painterResource(id = R.drawable.logo),
-                contentDescription = null,
-                modifier = Modifier.size(280.dp),
-                contentScale = ContentScale.Fit
-            )
-
-            Spacer(modifier = Modifier.weight(1f))
-
-            Text(
-                text = "Selamat datang di TABA",
-                fontSize = 22.sp,
-                fontWeight = FontWeight.Bold,
-                color = GreenPrimary,
-                textAlign = TextAlign.Center
-            )
-            
-            Spacer(modifier = Modifier.height(8.dp))
-            
-            Text(
-                text = "Latih percakapan Bahasa Arab Anda dengan AI secara interaktif.",
-                fontSize = 14.sp,
-                color = Color.Gray,
-                textAlign = TextAlign.Center
-            )
-
             if (error != null) {
-                Spacer(modifier = Modifier.height(16.dp))
                 Text(
                     text = "Gagal login: ${error}",
                     color = MaterialTheme.colorScheme.error,
                     fontSize = 12.sp,
-                    textAlign = TextAlign.Center
+                    textAlign = TextAlign.Center,
+                    modifier = Modifier.padding(bottom = 8.dp)
                 )
             }
 
-            Spacer(modifier = Modifier.height(32.dp))
-
-            // Tombol Login Google
+            // Tombol Login Google diletakkan di area kosong (sekitar 120dp dari bawah)
             Button(
                 onClick = { 
-                    // MASUKKAN WEB CLIENT ID ANDA DI SINI
                     viewModel.signInWithGoogle(context, "1026211260732-mtlvjtp8luqfepil5rncjuk1d2ue0pv9.apps.googleusercontent.com")
                 },
                 modifier = Modifier
@@ -120,13 +80,12 @@ fun WelcomeScreen(
                 if (isLoading) {
                     CircularProgressIndicator(color = Color.White, modifier = Modifier.size(24.dp))
                 } else {
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        Text(text = "Masuk dengan Google", fontWeight = FontWeight.Bold)
-                    }
+                    Text(text = "Masuk dengan Google", fontWeight = FontWeight.Bold)
                 }
             }
             
-            Spacer(modifier = Modifier.height(32.dp))
+            // Spacer untuk memberi jarak dari teks paling bawah "Mulai perjalanan..."
+            Spacer(modifier = Modifier.height(100.dp))
         }
     }
 }

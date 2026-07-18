@@ -7,7 +7,6 @@ import androidx.activity.enableEdgeToEdge
 import androidx.compose.runtime.*
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.fadhil.taba.ui.auth.AuthViewModel
-import com.fadhil.taba.ui.auth.LoginScreen
 import com.fadhil.taba.ui.auth.WelcomeScreen
 import com.fadhil.taba.ui.dashboard.DashboardScreen
 import com.fadhil.taba.ui.theme.TabaTheme

@@ -60,9 +60,10 @@ class AuthViewModel(private val repository: AuthRepository = AuthRepository()) :
         }
     }
 
-    fun signOut(context: Context) {
+    fun signOut(context: Context, onComplete: () -> Unit = {}) {
         viewModelScope.launch {
             repository.signOut(context)
+            onComplete()
         }
     }
 }

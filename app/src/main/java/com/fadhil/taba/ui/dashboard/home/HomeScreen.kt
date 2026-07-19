@@ -31,9 +31,6 @@ fun HomeScreen(
     username: String,
     onStartLearningClick: () -> Unit,
     onModuleClick: (Module) -> Unit,
-    heroTitle: String = "Ayo Mulai Berbicara!",
-    heroSubtitle: String = "Latih percakapan, kosakata, dan pelafalan Bahasa Arab dengan bantuan AI.",
-    startButtonText: String = "Mulai Belajar",
     sectionTitle: String = "Daftar Materi",
     sectionActionText: String = "Lihat Semua >"
 ) {
@@ -41,7 +38,7 @@ fun HomeScreen(
         modifier = Modifier
             .fillMaxSize()
             .verticalScroll(rememberScrollState())
-            .padding(horizontal = 16.dp)
+            .padding(horizontal = 8.dp)
     ) {
         Spacer(modifier = Modifier.height(8.dp))
         
@@ -49,56 +46,19 @@ fun HomeScreen(
         Box(
             modifier = Modifier
                 .fillMaxWidth()
-                .height(260.dp)
-                .clip(RoundedCornerShape(28.dp))
+                .height(180.dp)
+                .clip(RoundedCornerShape(16.dp))
         ) {
             Image(
-                painter = painterResource(id = R.drawable.home),
+                painter = painterResource(id = R.drawable.banner),
                 contentDescription = null,
                 modifier = Modifier.fillMaxSize(),
                 contentScale = ContentScale.Crop
             )
-            
-            Column(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(20.dp)
-            ) {
-                Text(
-                    text = heroTitle,
-                    color = Color.White,
-                    fontSize = 24.sp,
-                    fontWeight = FontWeight.Bold
-                )
-                Text(
-                    text = heroSubtitle,
-                    color = Color.White.copy(alpha = 0.9f),
-                    fontSize = 14.sp,
-                    modifier = Modifier
-                        .padding(top = 8.dp)
-                        .width(200.dp)
-                )
-                
-                Spacer(modifier = Modifier.weight(1f))
-                
-                Button(
-                    onClick = onStartLearningClick,
-                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFEAD8B1)),
-                    shape = RoundedCornerShape(12.dp),
-                    contentPadding = PaddingValues(horizontal = 20.dp, vertical = 12.dp)
-                ) {
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        Text(text = startButtonText, color = GreenPrimary, fontWeight = FontWeight.Bold)
-                        Spacer(modifier = Modifier.width(8.dp))
-                        Icon(Icons.Default.ChevronRight, contentDescription = null, tint = GreenPrimary)
-                    }
-                }
-            }
         }
 
-        Spacer(modifier = Modifier.height(24.dp))
+        Spacer(modifier = Modifier.height(8.dp))
 
-        // Title Section
         Row(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.SpaceBetween,
@@ -115,15 +75,12 @@ fun HomeScreen(
             }
         }
 
-        Spacer(modifier = Modifier.height(8.dp))
+        Spacer(modifier = Modifier.height(4.dp))
 
-        // Preview Module List
         ModuleData.modules.take(6).forEach { module ->
             HomeModuleCard(module = module, onClick = { onModuleClick(module) })
-            Spacer(modifier = Modifier.height(12.dp))
+            Spacer(modifier = Modifier.height(4.dp))
         }
-        
-        Spacer(modifier = Modifier.height(80.dp))
     }
 }
 
@@ -133,7 +90,7 @@ fun HomeModuleCard(module: Module, onClick: () -> Unit) {
         modifier = Modifier
             .fillMaxWidth()
             .clickable { onClick() },
-        shape = RoundedCornerShape(24.dp),
+        shape = RoundedCornerShape(12.dp),
         color = Color.White,
         border = BorderStroke(1.dp, Color(0xFFF3F4F6))
     ) {

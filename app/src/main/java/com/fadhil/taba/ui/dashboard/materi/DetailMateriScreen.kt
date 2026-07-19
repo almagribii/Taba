@@ -9,8 +9,10 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.FormatSize
+import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.*
-import androidx.compose.runtime.Composable
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -24,6 +26,11 @@ import androidx.compose.ui.unit.sp
 import com.fadhil.taba.data.model.Module
 import com.fadhil.taba.ui.theme.GreenPrimary
 
+fun String.removeHarakat(): String {
+    val regex = Regex("[\u064B-\u065F]")
+    return this.replace(regex, "")
+}
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun DetailMateriScreen(
@@ -31,6 +38,16 @@ fun DetailMateriScreen(
     onBack: () -> Unit,
     onPracticeClick: (Module) -> Unit
 ) {
+    var textSizeMultiplier by remember { mutableStateOf(1.0f) }
+    var showHarakat by remember { mutableStateOf(true) }
+    var isVerticalLayout by remember { mutableStateOf(false) }
+    var showSettings by remember { mutableStateOf(false) }
+    val sheetState = rememberModalBottomSheetState()
+
+    fun formatArabic(text: String): String {
+        return if (showHarakat) text else text.removeHarakat()
+    }
+
     Scaffold(
         containerColor = Color(0xFFF9F7F2),
         topBar = {
@@ -39,6 +56,11 @@ fun DetailMateriScreen(
                 navigationIcon = {
                     IconButton(onClick = onBack) {
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Kembali")
+                    }
+                },
+                actions = {
+                    IconButton(onClick = { showSettings = true }) {
+                        Icon(Icons.Default.Settings, contentDescription = "Pengaturan Teks")
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
@@ -68,8 +90,8 @@ fun DetailMateriScreen(
             Spacer(modifier = Modifier.height(24.dp))
             
             Text(
-                text = module.arabicTitle,
-                fontSize = 28.sp,
+                text = formatArabic(module.arabicTitle),
+                fontSize = (28 * textSizeMultiplier).sp,
                 fontWeight = FontWeight.Bold,
                 color = GreenPrimary,
                 textAlign = TextAlign.Center
@@ -83,14 +105,37 @@ fun DetailMateriScreen(
                 shape = RoundedCornerShape(16.dp),
                 shadowElevation = 1.dp
             ) {
-                Text(
-                    text = module.content,
-                    fontSize = 20.sp,
-                    lineHeight = 36.sp,
-                    color = Color.Black,
-                    modifier = Modifier.padding(16.dp),
-                    textAlign = TextAlign.Right
-                )
+                val contentText = formatArabic(module.content)
+                if (isVerticalLayout) {
+                    // Simple vertical layout: each character or small group on a new line?
+                    // Actually, Arabic vertical text is usually RTL rotated or just lines.
+                    // Here we'll interpret it as character-based vertical for "reading" practice if requested.
+                    // But standard is likely just turning the paragraph into a column of words.
+                    val words = contentText.split(" ")
+                    Column(
+                        modifier = Modifier.padding(16.dp),
+                        horizontalAlignment = Alignment.CenterHorizontally
+                    ) {
+                        words.forEach { word ->
+                            Text(
+                                text = word,
+                                fontSize = (20 * textSizeMultiplier).sp,
+                                lineHeight = (36 * textSizeMultiplier).sp,
+                                color = Color.Black,
+                                textAlign = TextAlign.Center
+                            )
+                        }
+                    }
+                } else {
+                    Text(
+                        text = contentText,
+                        fontSize = (20 * textSizeMultiplier).sp,
+                        lineHeight = (36 * textSizeMultiplier).sp,
+                        color = Color.Black,
+                        modifier = Modifier.padding(16.dp),
+                        textAlign = TextAlign.Right
+                    )
+                }
             }
             
             Spacer(modifier = Modifier.height(24.dp))
@@ -107,7 +152,7 @@ fun DetailMateriScreen(
             }
             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 module.vocabularies.take(3).forEach { vocab ->
-                    VocabularyItem(vocab.arabic, vocab.indonesian)
+                    VocabularyItem(formatArabic(vocab.arabic), vocab.indonesian, textSizeMultiplier)
                 }
                 if (module.vocabularies.size > 3) {
                     OutlinedButton(
@@ -133,9 +178,9 @@ fun DetailMateriScreen(
                 Column(modifier = Modifier.padding(16.dp)) {
                     module.questions.forEachIndexed { index, question ->
                         Text(
-                            text = question,
-                            fontSize = 18.sp,
-                            lineHeight = 30.sp,
+                            text = formatArabic(question),
+                            fontSize = (18 * textSizeMultiplier).sp,
+                            lineHeight = (30 * textSizeMultiplier).sp,
                             modifier = Modifier
                                 .fillMaxWidth()
                                 .padding(vertical = 4.dp),
@@ -149,6 +194,64 @@ fun DetailMateriScreen(
             }
             
             Spacer(modifier = Modifier.height(32.dp))
+        }
+    }
+
+    if (showSettings) {
+        ModalBottomSheet(
+            onDismissRequest = { showSettings = false },
+            sheetState = sheetState,
+            containerColor = Color.White
+        ) {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(16.dp)
+                    .padding(bottom = 32.dp)
+            ) {
+                Text("Pengaturan Teks", fontSize = 20.sp, fontWeight = FontWeight.Bold, color = GreenPrimary)
+                Spacer(modifier = Modifier.height(24.dp))
+                
+                // Ukuran Teks
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Icon(Icons.Default.FormatSize, contentDescription = null, tint = GreenPrimary)
+                    Spacer(modifier = Modifier.width(16.dp))
+                    Text("Ukuran Teks", modifier = Modifier.weight(1f))
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        IconButton(onClick = { if (textSizeMultiplier > 0.8f) textSizeMultiplier -= 0.1f }) {
+                            Text("-", fontSize = 20.sp, fontWeight = FontWeight.Bold)
+                        }
+                        Text("${(textSizeMultiplier * 100).toInt()}%", fontWeight = FontWeight.Bold)
+                        IconButton(onClick = { if (textSizeMultiplier < 2.0f) textSizeMultiplier += 0.1f }) {
+                            Text("+", fontSize = 20.sp, fontWeight = FontWeight.Bold)
+                        }
+                    }
+                }
+                
+                Spacer(modifier = Modifier.height(16.dp))
+                
+                // Harakat
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Text("Tampilkan Harakat", modifier = Modifier.weight(1f))
+                    Switch(
+                        checked = showHarakat,
+                        onCheckedChange = { showHarakat = it },
+                        colors = SwitchDefaults.colors(checkedThumbColor = Color.White, checkedTrackColor = GreenPrimary)
+                    )
+                }
+                
+                Spacer(modifier = Modifier.height(16.dp))
+                
+                // Layout Direction
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Text("Layout Vertical", modifier = Modifier.weight(1f))
+                    Switch(
+                        checked = isVerticalLayout,
+                        onCheckedChange = { isVerticalLayout = it },
+                        colors = SwitchDefaults.colors(checkedThumbColor = Color.White, checkedTrackColor = GreenPrimary)
+                    )
+                }
+            }
         }
     }
 }
@@ -167,7 +270,7 @@ fun SectionHeader(title: String) {
 }
 
 @Composable
-fun VocabularyItem(arabic: String, indonesian: String) {
+fun VocabularyItem(arabic: String, indonesian: String, textSizeMultiplier: Float = 1.0f) {
     Surface(
         modifier = Modifier.fillMaxWidth(),
         color = Color.White,
@@ -181,8 +284,8 @@ fun VocabularyItem(arabic: String, indonesian: String) {
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically
         ) {
-            Text(text = indonesian, fontSize = 14.sp, color = Color.Gray, modifier = Modifier.weight(1f))
-            Text(text = arabic, fontSize = 18.sp, fontWeight = FontWeight.Bold, color = GreenPrimary, textAlign = TextAlign.Right)
+            Text(text = indonesian, fontSize = (14 * textSizeMultiplier).sp, color = Color.Gray, modifier = Modifier.weight(1f))
+            Text(text = arabic, fontSize = (18 * textSizeMultiplier).sp, fontWeight = FontWeight.Bold, color = GreenPrimary, textAlign = TextAlign.Right)
         }
     }
 }

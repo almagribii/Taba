@@ -52,21 +52,19 @@ fun MateriScreen(
         LazyVerticalGrid(
             columns = GridCells.Fixed(2),
             modifier = Modifier.fillMaxSize(),
-            contentPadding = PaddingValues(16.dp),
-            horizontalArrangement = Arrangement.spacedBy(16.dp),
-            verticalArrangement = Arrangement.spacedBy(16.dp)
+            contentPadding = PaddingValues(12.dp),
+            horizontalArrangement = Arrangement.spacedBy(10.dp),
+            verticalArrangement = Arrangement.spacedBy(10.dp)
         ) {
-            // Banner Hijau Interaktif
             item(span = { GridItemSpan(2) }) {
                 MateriBanner()
             }
 
-            // Search Bar & Filter
             item(span = { GridItemSpan(2) }) {
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(vertical = 8.dp),
+                        .padding(vertical = 2.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     OutlinedTextField(
@@ -105,10 +103,6 @@ fun MateriScreen(
             items(ModuleData.modules) { module ->
                 ModuleCardNew(module = module, onClick = { onModuleClick(module) })
             }
-            
-            item(span = { GridItemSpan(2) }) {
-                Spacer(modifier = Modifier.height(100.dp))
-            }
         }
     }
 }
@@ -118,8 +112,8 @@ fun MateriBanner() {
     Surface(
         modifier = Modifier
             .fillMaxWidth()
-            .height(140.dp),
-        shape = RoundedCornerShape(28.dp),
+            .height(100.dp),
+        shape = RoundedCornerShape(16.dp),
         color = Color.Transparent
     ) {
         Box(
@@ -185,7 +179,7 @@ fun ModuleCardNew(module: Module, onClick: () -> Unit) {
         modifier = Modifier
             .fillMaxWidth()
             .clickable { onClick() },
-        shape = RoundedCornerShape(24.dp),
+        shape = RoundedCornerShape(16.dp),
         color = Color.White,
         shadowElevation = 1.dp,
         border = BorderStroke(1.dp, Color(0xFFF3F4F6))
@@ -211,13 +205,13 @@ fun ModuleCardNew(module: Module, onClick: () -> Unit) {
                         contentScale = ContentScale.Fit
                     )
                     
-                    // Number Circle Badge (Top Right of the Image)
+                    // Number Circle Badge (Top Left of the Image)
                     Surface(
                         color = Color(0xFFFDE68A),
                         shape = CircleShape,
                         modifier = Modifier
                             .size(24.dp)
-                            .align(Alignment.TopEnd),
+                            .align(Alignment.TopStart),
                         border = BorderStroke(2.dp, Color.White)
                     ) {
                         Box(contentAlignment = Alignment.Center) {
@@ -233,9 +227,9 @@ fun ModuleCardNew(module: Module, onClick: () -> Unit) {
                 
                 Spacer(modifier = Modifier.width(12.dp))
 
-                // Titles (Right Side)
+                // Titles (Right Side - Horizontally centered in their section)
                 Column(
-                    horizontalAlignment = Alignment.End,
+                    horizontalAlignment = Alignment.CenterHorizontally,
                     modifier = Modifier.weight(1f)
                 ) {
                     Text(
@@ -243,13 +237,15 @@ fun ModuleCardNew(module: Module, onClick: () -> Unit) {
                         fontSize = 17.sp,
                         fontWeight = FontWeight.Bold,
                         color = GreenPrimary,
-                        maxLines = 1
+                        maxLines = 1,
+                        textAlign = androidx.compose.ui.text.style.TextAlign.Center
                     )
                     Text(
                         text = "Di ${module.title}",
                         fontSize = 11.sp,
                         color = Color.Gray,
-                        maxLines = 1
+                        maxLines = 1,
+                        textAlign = androidx.compose.ui.text.style.TextAlign.Center
                     )
                 }
             }
@@ -264,29 +260,29 @@ fun ModuleCardNew(module: Module, onClick: () -> Unit) {
                 modifier = Modifier.padding(bottom = 4.dp)
             )
             
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                LinearProgressIndicator(
-                    progress = { 0.6f },
-                    modifier = Modifier
-                        .weight(1f)
-                        .height(6.dp)
-                        .clip(CircleShape),
-                    color = Color(0xFF166534),
-                    trackColor = Color(0xFFF3F4F6)
-                )
-                
-                Spacer(modifier = Modifier.width(8.dp))
-                
-                Surface(
-                    modifier = Modifier.size(24.dp),
-                    shape = CircleShape,
-                    color = Color(0xFFF3F4F6)
-                ) {
-                    Box(contentAlignment = Alignment.Center) {
-                        Icon(Icons.Default.ChevronRight, contentDescription = null, modifier = Modifier.size(14.dp), tint = Color.Gray)
-                    }
-                }
-            }
+//            Row(verticalAlignment = Alignment.CenterVertically) {
+//                LinearProgressIndicator(
+//                    progress = { 0.6f },
+//                    modifier = Modifier
+//                        .weight(1f)
+//                        .height(6.dp)
+//                        .clip(CircleShape),
+//                    color = Color(0xFF166534),
+//                    trackColor = Color(0xFFF3F4F6)
+//                )
+//                
+//                Spacer(modifier = Modifier.width(8.dp))
+//                
+//                Surface(
+//                    modifier = Modifier.size(24.dp),
+//                    shape = CircleShape,
+//                    color = Color(0xFFF3F4F6)
+//                ) {
+//                    Box(contentAlignment = Alignment.Center) {
+//                        Icon(Icons.Default.ChevronRight, contentDescription = null, modifier = Modifier.size(14.dp), tint = Color.Gray)
+//                    }
+//                }
+//            }
         }
     }
 }

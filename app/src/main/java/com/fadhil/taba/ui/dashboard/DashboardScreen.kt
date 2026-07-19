@@ -7,6 +7,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.fadhil.taba.data.model.Module
 import com.fadhil.taba.ui.auth.AuthViewModel
 import java.io.File
 
@@ -18,6 +19,9 @@ fun DashboardScreen(
     val context = LocalContext.current
     val user by authViewModel.currentUser.collectAsState()
     var currentRoute by remember { mutableStateOf("home") }
+    
+    // Sub-navigation for Materi
+    var selectedModule by remember { mutableStateOf<Module?>(null) }
     
     // Avatar state
     var avatarPath by remember { mutableStateOf<String?>(null) }
@@ -31,44 +35,55 @@ fun DashboardScreen(
     
     val backgroundColor = Color(0xFFF9F7F2)
 
-    Scaffold(
-        containerColor = backgroundColor,
-        topBar = {
-            if (currentRoute != "settings") {
-                TabaTopBar(
-                    username = user?.userMetadata?.get("username")?.toString() ?: "Pengguna",
-                    avatarPath = avatarPath,
-                    onProfileClick = { currentRoute = "settings" }
+    // Jika ada modul yang dipilih, tampilkan Detail (menutup seluruh layar)
+    if (selectedModule != null) {
+        DetailMateriScreen(
+            module = selectedModule!!,
+            onBack = { selectedModule = null }
+        )
+    } else {
+        Scaffold(
+            containerColor = backgroundColor,
+            topBar = {
+                if (currentRoute != "settings") {
+                    TabaTopBar(
+                        username = user?.userMetadata?.get("username")?.toString() ?: "Pengguna",
+                        avatarPath = avatarPath,
+                        onProfileClick = { currentRoute = "settings" }
+                    )
+                }
+            },
+            bottomBar = {
+                TabaBottomBar(
+                    currentRoute = currentRoute,
+                    onNavigate = { currentRoute = it }
                 )
             }
-        },
-        bottomBar = {
-            TabaBottomBar(
-                currentRoute = currentRoute,
-                onNavigate = { currentRoute = it }
-            )
-        }
-    ) { paddingValues ->
-        Box(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(paddingValues)
-        ) {
-            when (currentRoute) {
-                "home" -> HomeScreen(user?.userMetadata?.get("username")?.toString() ?: "Pengguna")
-                "hiwar" -> HiwarScreen()
-                "materi" -> MateriScreen()
-                "mufrodat" -> MufrodatScreen()
-                "settings" -> SettingsScreen(
-                    username = user?.userMetadata?.get("username")?.toString() ?: "Pengguna TABA",
-                    avatarPath = avatarPath,
-                    onAvatarChange = { avatarPath = it },
-                    onSignOut = {
-                        authViewModel.signOut(context) {
-                            onSignOut()
-                        }
-                    }
+        ) { paddingValues ->
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(paddingValues)
+            ) {
+                when (currentRoute) {
+                    "home" -> HomeScreen(user?.userMetadata?.get("username")?.toString() ?: "Pengguna")
+                    "hiwar" -> HiwarScreen()
+                "materi" -> MateriScreen(
+                    onBack = { currentRoute = "home" },
+                    onModuleClick = { selectedModule = it }
                 )
+                "mufrodat" -> MufrodatScreen()
+                    "settings" -> SettingsScreen(
+                        username = user?.userMetadata?.get("username")?.toString() ?: "Pengguna TABA",
+                        avatarPath = avatarPath,
+                        onAvatarChange = { avatarPath = it },
+                        onSignOut = {
+                            authViewModel.signOut(context) {
+                                onSignOut()
+                            }
+                        }
+                    )
+                }
             }
         }
     }

@@ -1,8 +1,9 @@
 package com.fadhil.taba.ui.dashboard.materi
 
+import android.app.Activity
+import android.content.pm.ActivityInfo
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Image
-import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -10,14 +11,17 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.FormatSize
+import androidx.compose.material.icons.filled.ScreenRotation
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -38,14 +42,36 @@ fun DetailMateriScreen(
     onBack: () -> Unit,
     onPracticeClick: (Module) -> Unit
 ) {
-    var textSizeMultiplier by remember { mutableStateOf(1.0f) }
-    var showHarakat by remember { mutableStateOf(true) }
-    var isVerticalLayout by remember { mutableStateOf(false) }
+    val context = LocalContext.current
+    val activity = context as? Activity
+    
+    // Gunakan rememberSaveable agar state bertahan saat rotasi (Activity Re-creation)
+    var textSizeMultiplier by rememberSaveable { mutableStateOf(1.0f) }
+    var showHarakat by rememberSaveable { mutableStateOf(true) }
+    var isLandscape by rememberSaveable { mutableStateOf(false) }
+    
     var showSettings by remember { mutableStateOf(false) }
     val sheetState = rememberModalBottomSheetState()
 
     fun formatArabic(text: String): String {
         return if (showHarakat) text else text.removeHarakat()
+    }
+
+    // Mengunci orientasi berdasarkan state isLandscape
+    LaunchedEffect(isLandscape) {
+        activity?.requestedOrientation = if (isLandscape) {
+            ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE
+        } else {
+            // Paksa Portrait saat dimatikan, bukan UNSPECIFIED agar tidak mengikuti sensor
+            ActivityInfo.SCREEN_ORIENTATION_PORTRAIT
+        }
+    }
+
+    // Kembalikan ke Portrait saat keluar dari layar ini
+    DisposableEffect(Unit) {
+        onDispose {
+            activity?.requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_PORTRAIT
+        }
     }
 
     Scaffold(
@@ -77,17 +103,20 @@ fun DetailMateriScreen(
                 .padding(16.dp),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            Image(
-                painter = painterResource(id = module.imageResId),
-                contentDescription = null,
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(200.dp)
-                    .clip(RoundedCornerShape(16.dp)),
-                contentScale = ContentScale.Fit
-            )
-            
-            Spacer(modifier = Modifier.height(24.dp))
+            // Sembunyikan gambar saat landscape agar teks lebih luas
+            if (!isLandscape) {
+                Image(
+                    painter = painterResource(id = module.imageResId),
+                    contentDescription = null,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(200.dp)
+                        .clip(RoundedCornerShape(16.dp)),
+                    contentScale = ContentScale.Fit
+                )
+                
+                Spacer(modifier = Modifier.height(24.dp))
+            }
             
             Text(
                 text = formatArabic(module.arabicTitle),
@@ -105,37 +134,14 @@ fun DetailMateriScreen(
                 shape = RoundedCornerShape(16.dp),
                 shadowElevation = 1.dp
             ) {
-                val contentText = formatArabic(module.content)
-                if (isVerticalLayout) {
-                    // Simple vertical layout: each character or small group on a new line?
-                    // Actually, Arabic vertical text is usually RTL rotated or just lines.
-                    // Here we'll interpret it as character-based vertical for "reading" practice if requested.
-                    // But standard is likely just turning the paragraph into a column of words.
-                    val words = contentText.split(" ")
-                    Column(
-                        modifier = Modifier.padding(16.dp),
-                        horizontalAlignment = Alignment.CenterHorizontally
-                    ) {
-                        words.forEach { word ->
-                            Text(
-                                text = word,
-                                fontSize = (20 * textSizeMultiplier).sp,
-                                lineHeight = (36 * textSizeMultiplier).sp,
-                                color = Color.Black,
-                                textAlign = TextAlign.Center
-                            )
-                        }
-                    }
-                } else {
-                    Text(
-                        text = contentText,
-                        fontSize = (20 * textSizeMultiplier).sp,
-                        lineHeight = (36 * textSizeMultiplier).sp,
-                        color = Color.Black,
-                        modifier = Modifier.padding(16.dp),
-                        textAlign = TextAlign.Right
-                    )
-                }
+                Text(
+                    text = formatArabic(module.content),
+                    fontSize = (20 * textSizeMultiplier).sp,
+                    lineHeight = (36 * textSizeMultiplier).sp,
+                    color = Color.Black,
+                    modifier = Modifier.padding(16.dp),
+                    textAlign = TextAlign.Right
+                )
             }
             
             Spacer(modifier = Modifier.height(24.dp))
@@ -242,15 +248,18 @@ fun DetailMateriScreen(
                 
                 Spacer(modifier = Modifier.height(16.dp))
                 
-                // Layout Direction
+                // Layout / Orientation
                 Row(verticalAlignment = Alignment.CenterVertically) {
-                    Text("Layout Vertical", modifier = Modifier.weight(1f))
+                    Icon(Icons.Default.ScreenRotation, contentDescription = null, tint = GreenPrimary)
+                    Spacer(modifier = Modifier.width(16.dp))
+                    Text("Layar Horizontal (Landscape)", modifier = Modifier.weight(1f))
                     Switch(
-                        checked = isVerticalLayout,
-                        onCheckedChange = { isVerticalLayout = it },
+                        checked = isLandscape,
+                        onCheckedChange = { isLandscape = it },
                         colors = SwitchDefaults.colors(checkedThumbColor = Color.White, checkedTrackColor = GreenPrimary)
                     )
                 }
+
             }
         }
     }

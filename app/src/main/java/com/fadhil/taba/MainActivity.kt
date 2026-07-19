@@ -7,6 +7,8 @@ import androidx.activity.enableEdgeToEdge
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.*
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.saveable.Saver
 import androidx.compose.ui.platform.LocalContext
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.fadhil.taba.data.settings.AppSettingsStore
@@ -21,7 +23,7 @@ class MainActivity : ComponentActivity() {
         enableEdgeToEdge()
         setContent {
             val context = LocalContext.current
-            LaunchedEffect(context) {
+            LaunchedEffect(Unit) {
                 AppSettingsStore.initialize(context)
             }
             val settings by AppSettingsStore.settings.collectAsState()
@@ -37,14 +39,14 @@ fun TabaApp() {
     val authViewModel: AuthViewModel = viewModel()
     val currentUser by authViewModel.currentUser.collectAsState()
     
-    // State Navigasi Sederhana
-    var currentScreen by remember { mutableStateOf<Screen>(Screen.Welcome) }
+    // Gunakan rememberSaveable agar state navigasi bertahan saat rotasi layar
+    var currentScreen by rememberSaveable(saver = ScreenSaver) { mutableStateOf<Screen>(Screen.Welcome) }
 
-    // Jika user sudah login, arahkan ke Dashboard
+    // Jika user sudah login, arahkan ke Dashboard (Hanya jika belum di Dashboard)
     LaunchedEffect(currentUser) {
-        if (currentUser != null) {
+        if (currentUser != null && currentScreen == Screen.Welcome) {
             currentScreen = Screen.Dashboard
-        } else if (currentScreen == Screen.Dashboard) {
+        } else if (currentUser == null && currentScreen == Screen.Dashboard) {
             currentScreen = Screen.Welcome
         }
     }
@@ -56,10 +58,6 @@ fun TabaApp() {
                 onLoginSuccess = { currentScreen = Screen.Dashboard }
             )
         }
-        is Screen.Login -> {
-            // Screen Login email sudah tidak digunakan, arahkan balik ke Welcome jika terpanggil
-            currentScreen = Screen.Welcome
-        }
         Screen.Dashboard -> {
             DashboardScreen(
                 authViewModel = authViewModel,
@@ -69,8 +67,25 @@ fun TabaApp() {
     }
 }
 
+// Saver untuk menyimpan state navigasi saat Activity dibuat ulang (misalnya saat rotasi)
+val ScreenSaver = Saver<MutableState<Screen>, String>(
+    save = {
+        when (it.value) {
+            is Screen.Welcome -> "welcome"
+            is Screen.Dashboard -> "dashboard"
+        }
+    },
+    restore = {
+        mutableStateOf(
+            when (it) {
+                "dashboard" -> Screen.Dashboard
+                else -> Screen.Welcome
+            }
+        )
+    }
+)
+
 sealed class Screen {
     object Welcome : Screen()
-    data class Login(val isSignUp: Boolean) : Screen()
     object Dashboard : Screen()
 }

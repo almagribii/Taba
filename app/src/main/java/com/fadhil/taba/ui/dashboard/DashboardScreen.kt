@@ -18,22 +18,28 @@ import com.fadhil.taba.ui.dashboard.mufrodat.MufrodatScreen
 import com.fadhil.taba.ui.dashboard.settings.SettingsScreen
 import java.io.File
 
+import androidx.compose.runtime.saveable.rememberSaveable
+import com.fadhil.taba.data.local.ModuleData
+
 @Composable
 fun DashboardScreen(
     authViewModel: AuthViewModel = viewModel(),
     onSignOut: () -> Unit
 ) {
     val context = LocalContext.current
-    LaunchedEffect(context) {
+    LaunchedEffect(Unit) {
         AppSettingsStore.initialize(context)
     }
     val settings by AppSettingsStore.settings.collectAsState()
     val user by authViewModel.currentUser.collectAsState()
-    var currentRoute by remember { mutableStateOf("home") }
+    var currentRoute by rememberSaveable { mutableStateOf("home") }
     
-    // States untuk sub-navigasi
-    var selectedModuleForDetail by remember { mutableStateOf<Module?>(null) }
-    var selectedModuleForPractice by remember { mutableStateOf<Module?>(null) }
+    // States untuk sub-navigasi, gunakan ID atau ID modul agar bisa disimpan saat rotasi
+    var selectedModuleId by rememberSaveable { mutableStateOf<Int?>(null) }
+    var practiceModuleId by rememberSaveable { mutableStateOf<Int?>(null) }
+    
+    val selectedModuleForDetail = selectedModuleId?.let { id -> ModuleData.modules.find { it.id == id } }
+    val selectedModuleForPractice = practiceModuleId?.let { id -> ModuleData.modules.find { it.id == id } }
     
     // Avatar state
     val avatarPath = settings.avatarPath ?: run {
@@ -48,11 +54,11 @@ fun DashboardScreen(
 
     if (selectedModuleForDetail != null) {
         DetailMateriScreen(
-            module = selectedModuleForDetail!!,
-            onBack = { selectedModuleForDetail = null },
+            module = selectedModuleForDetail,
+            onBack = { selectedModuleId = null },
             onPracticeClick = { module ->
-                selectedModuleForPractice = module
-                selectedModuleForDetail = null
+                practiceModuleId = module.id
+                selectedModuleId = null
                 currentRoute = "mufrodat_internal"
             }
         )
@@ -89,16 +95,13 @@ fun DashboardScreen(
                     "home" -> HomeScreen(
                         username = profileName,
                         onStartLearningClick = { currentRoute = "materi" },
-                        onModuleClick = { selectedModuleForDetail = it },
-                        heroTitle = settings.homeHeroTitle,
-                        heroSubtitle = settings.homeHeroSubtitle,
-                        startButtonText = settings.homeActionText,
+                        onModuleClick = { selectedModuleId = it.id },
                         sectionTitle = settings.homeSectionTitle,
                         sectionActionText = settings.homeSectionActionText
                     )
                     "materi" -> MateriScreen(
                         onBack = { currentRoute = "home" },
-                        onModuleClick = { selectedModuleForDetail = it },
+                        onModuleClick = { selectedModuleId = it.id },
                         bannerTitle = settings.materiBannerTitle,
                         bannerSubtitle = settings.materiBannerSubtitle,
                         searchPlaceholder = settings.searchPlaceholder

@@ -123,8 +123,9 @@ fun TabaBottomBar(
     ) {
         val items = listOf(
             BottomNavItem("Beranda", "home", Icons.Outlined.Home, Icons.Filled.Home),
-            BottomNavItem("Al-Hiwar", "hiwar", Icons.Outlined.ChatBubbleOutline, Icons.Outlined.ChatBubbleOutline),
             BottomNavItem("Materi", "materi", Icons.Outlined.LibraryBooks, Icons.Outlined.LibraryBooks),
+
+            BottomNavItem("Al-Hiwar", "hiwar", Icons.Outlined.ChatBubbleOutline, Icons.Outlined.ChatBubbleOutline),
             BottomNavItem("Al-Mufradat", "mufrodat", Icons.Outlined.MenuBook, Icons.Outlined.MenuBook),
             BottomNavItem("Pengaturan", "settings", Icons.Outlined.Settings, Icons.Filled.Settings)
         )

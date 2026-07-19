@@ -1,7 +1,6 @@
 package com.fadhil.taba.ui.theme
 
 import android.app.Activity
-import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.darkColorScheme
 import androidx.compose.material3.lightColorScheme
@@ -39,11 +38,9 @@ private val LightColorScheme = lightColorScheme(
 
 @Composable
 fun TabaTheme(
-    // Kita paksa default-nya selalu false (Light Mode)
     darkTheme: Boolean = false,
     content: @Composable () -> Unit
 ) {
-    // Logika di bawahnya tetap sama
     val colorScheme = if (darkTheme) DarkColorScheme else LightColorScheme
 
     val view = LocalView.current

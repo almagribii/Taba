@@ -9,11 +9,10 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.Settings
-import androidx.compose.material.icons.outlined.AutoStories
-import androidx.compose.material.icons.outlined.ChatBubbleOutline
+import androidx.compose.material.icons.automirrored.outlined.Chat
+import androidx.compose.material.icons.automirrored.filled.Chat
 import androidx.compose.material.icons.outlined.Home
 import androidx.compose.material.icons.outlined.LibraryBooks
-import androidx.compose.material.icons.outlined.MenuBook
 import androidx.compose.material.icons.outlined.Settings
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
@@ -124,9 +123,7 @@ fun TabaBottomBar(
         val items = listOf(
             BottomNavItem("Beranda", "home", Icons.Outlined.Home, Icons.Filled.Home),
             BottomNavItem("Materi", "materi", Icons.Outlined.LibraryBooks, Icons.Outlined.LibraryBooks),
-
-            BottomNavItem("Al-Hiwar", "hiwar", Icons.Outlined.ChatBubbleOutline, Icons.Outlined.ChatBubbleOutline),
-            BottomNavItem("Al-Mufradat", "mufrodat", Icons.Outlined.MenuBook, Icons.Outlined.MenuBook),
+            BottomNavItem("Tanya AI", "chat_ai", Icons.AutoMirrored.Outlined.Chat, Icons.AutoMirrored.Filled.Chat),
             BottomNavItem("Pengaturan", "settings", Icons.Outlined.Settings, Icons.Filled.Settings)
         )
 

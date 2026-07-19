@@ -1,9 +1,8 @@
-package com.fadhil.taba.ui.dashboard
+package com.fadhil.taba.ui.dashboard.materi
 
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.grid.GridCells
@@ -13,10 +12,8 @@ import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.ChevronRight
 import androidx.compose.material.icons.filled.FilterList
-import androidx.compose.material.icons.filled.Notifications
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Star
 import androidx.compose.material3.*
@@ -39,16 +36,29 @@ import com.fadhil.taba.ui.theme.GreenPrimary
 @Composable
 fun MateriScreen(
     onBack: () -> Unit,
-    onModuleClick: (Module) -> Unit
+    onModuleClick: (Module) -> Unit,
+    bannerTitle: String = "6 Materi Interaktif",
+    bannerSubtitle: String = "Latihan kosakata + hiwar + pelafalan",
+    searchPlaceholder: String = "Cari materi..."
 ) {
     var searchQuery by remember { mutableStateOf("") }
+    val filteredModules = remember(searchQuery) {
+        if (searchQuery.isBlank()) {
+            ModuleData.modules
+        } else {
+            val query = searchQuery.trim().lowercase()
+            ModuleData.modules.filter { module ->
+                module.title.lowercase().contains(query) ||
+                    module.arabicTitle.lowercase().contains(query)
+            }
+        }
+    }
 
     Column(
         modifier = Modifier
             .fillMaxSize()
             .background(Color(0xFFF9F7F2))
     ) {
-
         LazyVerticalGrid(
             columns = GridCells.Fixed(2),
             modifier = Modifier.fillMaxSize(),
@@ -57,7 +67,7 @@ fun MateriScreen(
             verticalArrangement = Arrangement.spacedBy(10.dp)
         ) {
             item(span = { GridItemSpan(2) }) {
-                MateriBanner()
+                MateriBanner(bannerTitle = bannerTitle, bannerSubtitle = bannerSubtitle)
             }
 
             item(span = { GridItemSpan(2) }) {
@@ -70,7 +80,7 @@ fun MateriScreen(
                     OutlinedTextField(
                         value = searchQuery,
                         onValueChange = { searchQuery = it },
-                        placeholder = { Text("Cari materi...", color = Color.Gray) },
+                        placeholder = { Text(searchPlaceholder, color = Color.Gray) },
                         leadingIcon = { Icon(Icons.Default.Search, contentDescription = null, tint = Color.Gray) },
                         modifier = Modifier
                             .weight(1f)
@@ -100,15 +110,28 @@ fun MateriScreen(
             }
 
             // Grid Module Cards
-            items(ModuleData.modules) { module ->
-                ModuleCardNew(module = module, onClick = { onModuleClick(module) })
+            if (filteredModules.isEmpty()) {
+                item(span = { GridItemSpan(2) }) {
+                    Text(
+                        text = "Materi tidak ditemukan",
+                        color = Color.Gray,
+                        modifier = Modifier.fillMaxWidth().padding(vertical = 24.dp)
+                    )
+                }
+            } else {
+                items(filteredModules) { module ->
+                    ModuleCardNew(module = module, onClick = { onModuleClick(module) })
+                }
             }
         }
     }
 }
 
 @Composable
-fun MateriBanner() {
+fun MateriBanner(
+    bannerTitle: String,
+    bannerSubtitle: String
+) {
     Surface(
         modifier = Modifier
             .fillMaxWidth()
@@ -124,7 +147,6 @@ fun MateriBanner() {
                     )
                 )
         ) {
-            // Background Mosque Illustration
             Image(
                 painter = painterResource(id = R.drawable.splash),
                 contentDescription = null,
@@ -142,7 +164,6 @@ fun MateriBanner() {
                     .padding(20.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                // Circle Star Icon
                 Surface(
                     modifier = Modifier.size(60.dp),
                     shape = CircleShape,
@@ -157,13 +178,13 @@ fun MateriBanner() {
                 
                 Column {
                     Text(
-                        text = "6 Materi Interaktif",
+                        text = bannerTitle,
                         fontSize = 20.sp,
                         fontWeight = FontWeight.Bold,
                         color = GreenPrimary
                     )
                     Text(
-                        text = "Latihan kosakata + hiwar + pelafalan",
+                        text = bannerSubtitle,
                         fontSize = 13.sp,
                         color = GreenPrimary.copy(alpha = 0.7f)
                     )
@@ -191,11 +212,9 @@ fun ModuleCardNew(module: Module, onClick: () -> Unit) {
                 modifier = Modifier.fillMaxWidth(),
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                // Image with Badge on Top Right
                 Box(
                     modifier = Modifier.size(85.dp)
                 ) {
-                    // Illustration
                     Image(
                         painter = painterResource(id = module.imageResId),
                         contentDescription = null,
@@ -205,7 +224,6 @@ fun ModuleCardNew(module: Module, onClick: () -> Unit) {
                         contentScale = ContentScale.Fit
                     )
                     
-                    // Number Circle Badge (Top Left of the Image)
                     Surface(
                         color = Color(0xFFFDE68A),
                         shape = CircleShape,
@@ -227,7 +245,6 @@ fun ModuleCardNew(module: Module, onClick: () -> Unit) {
                 
                 Spacer(modifier = Modifier.width(12.dp))
 
-                // Titles (Right Side - Horizontally centered in their section)
                 Column(
                     horizontalAlignment = Alignment.CenterHorizontally,
                     modifier = Modifier.weight(1f)
@@ -252,7 +269,6 @@ fun ModuleCardNew(module: Module, onClick: () -> Unit) {
             
             Spacer(modifier = Modifier.height(12.dp))
             
-            // Progress Section
             Text(
                 text = "${(1..4).random()}/5 latihan selesai",
                 fontSize = 10.sp,
@@ -260,29 +276,15 @@ fun ModuleCardNew(module: Module, onClick: () -> Unit) {
                 modifier = Modifier.padding(bottom = 4.dp)
             )
             
-//            Row(verticalAlignment = Alignment.CenterVertically) {
-//                LinearProgressIndicator(
-//                    progress = { 0.6f },
-//                    modifier = Modifier
-//                        .weight(1f)
-//                        .height(6.dp)
-//                        .clip(CircleShape),
-//                    color = Color(0xFF166534),
-//                    trackColor = Color(0xFFF3F4F6)
-//                )
-//                
-//                Spacer(modifier = Modifier.width(8.dp))
-//                
-//                Surface(
-//                    modifier = Modifier.size(24.dp),
-//                    shape = CircleShape,
-//                    color = Color(0xFFF3F4F6)
-//                ) {
-//                    Box(contentAlignment = Alignment.Center) {
-//                        Icon(Icons.Default.ChevronRight, contentDescription = null, modifier = Modifier.size(14.dp), tint = Color.Gray)
-//                    }
-//                }
-//            }
+            LinearProgressIndicator(
+                progress = { 0.6f },
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(6.dp)
+                    .clip(CircleShape),
+                color = Color(0xFF166534),
+                trackColor = Color(0xFFF3F4F6)
+            )
         }
     }
 }

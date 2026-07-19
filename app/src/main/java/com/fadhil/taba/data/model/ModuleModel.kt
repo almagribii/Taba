@@ -12,5 +12,6 @@ data class Module(
 
 data class ModuleVocabulary(
     val arabic: String,
-    val indonesian: String
+    val indonesian: String,
+    val imageResId: Int? = null
 )

@@ -1,5 +1,6 @@
-package com.fadhil.taba.ui.dashboard
+package com.fadhil.taba.ui.dashboard.materi
 
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
@@ -25,7 +26,11 @@ import com.fadhil.taba.ui.theme.GreenPrimary
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun DetailMateriScreen(module: Module, onBack: () -> Unit) {
+fun DetailMateriScreen(
+    module: Module, 
+    onBack: () -> Unit,
+    onPracticeClick: (Module) -> Unit
+) {
     Scaffold(
         containerColor = Color(0xFFF9F7F2),
         topBar = {
@@ -50,7 +55,6 @@ fun DetailMateriScreen(module: Module, onBack: () -> Unit) {
                 .padding(16.dp),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            // Image
             Image(
                 painter = painterResource(id = module.imageResId),
                 contentDescription = null,
@@ -63,7 +67,6 @@ fun DetailMateriScreen(module: Module, onBack: () -> Unit) {
             
             Spacer(modifier = Modifier.height(24.dp))
             
-            // Arabic Title
             Text(
                 text = module.arabicTitle,
                 fontSize = 28.sp,
@@ -74,7 +77,6 @@ fun DetailMateriScreen(module: Module, onBack: () -> Unit) {
             
             Spacer(modifier = Modifier.height(16.dp))
             
-            // Content Card
             Surface(
                 modifier = Modifier.fillMaxWidth(),
                 color = Color.White,
@@ -93,17 +95,34 @@ fun DetailMateriScreen(module: Module, onBack: () -> Unit) {
             
             Spacer(modifier = Modifier.height(24.dp))
             
-            // Vocabulary Section
-            SectionHeader("المفردات (Kosakata)")
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                SectionHeader("المفردات (Kosakata)")
+                TextButton(onClick = { onPracticeClick(module) }) {
+                    Text("Latihan Sekarang", color = Color(0xFF166534), fontWeight = FontWeight.Bold)
+                }
+            }
             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                module.vocabularies.forEach { vocab ->
+                module.vocabularies.take(3).forEach { vocab ->
                     VocabularyItem(vocab.arabic, vocab.indonesian)
+                }
+                if (module.vocabularies.size > 3) {
+                    OutlinedButton(
+                        onClick = { onPracticeClick(module) },
+                        modifier = Modifier.fillMaxWidth(),
+                        shape = RoundedCornerShape(12.dp),
+                        border = BorderStroke(1.dp, Color(0xFF166534))
+                    ) {
+                        Text("Lihat Semua Mufrodat (${module.vocabularies.size})", color = Color(0xFF166534))
+                    }
                 }
             }
             
             Spacer(modifier = Modifier.height(24.dp))
             
-            // Questions Section
             SectionHeader("الأسئلة (Pertanyaan)")
             Surface(
                 modifier = Modifier.fillMaxWidth(),

@@ -4,8 +4,12 @@ import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.*
+import androidx.compose.ui.platform.LocalContext
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.fadhil.taba.data.settings.AppSettingsStore
 import com.fadhil.taba.ui.auth.AuthViewModel
 import com.fadhil.taba.ui.auth.WelcomeScreen
 import com.fadhil.taba.ui.dashboard.DashboardScreen
@@ -16,7 +20,12 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
         setContent {
-            TabaTheme {
+            val context = LocalContext.current
+            LaunchedEffect(context) {
+                AppSettingsStore.initialize(context)
+            }
+            val settings by AppSettingsStore.settings.collectAsState()
+            TabaTheme(darkTheme = settings.darkMode) {
                 TabaApp()
             }
         }

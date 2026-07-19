@@ -60,12 +60,15 @@ dependencies {
     implementation(libs.supabase.gotrue)
     implementation(libs.supabase.storage)
     implementation(libs.ktor.client.okhttp)
+    implementation("io.ktor:ktor-client-content-negotiation:${libs.versions.ktor.get()}")
+    implementation("io.ktor:ktor-serialization-kotlinx-json:${libs.versions.ktor.get()}")
     implementation(libs.kotlinx.serialization.json)
 
     // Google Auth & Credentials
     implementation(libs.androidx.credentials)
     implementation(libs.androidx.credentials.play.services.auth)
     implementation(libs.google.id)
+    // implementation(libs.generativeai) // Removed due to Ktor 3 conflict
 
     testImplementation(libs.junit)
     androidTestImplementation(platform(libs.androidx.compose.bom))

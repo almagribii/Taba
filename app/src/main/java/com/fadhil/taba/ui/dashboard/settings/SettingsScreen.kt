@@ -1,4 +1,4 @@
-package com.fadhil.taba.ui.dashboard
+package com.fadhil.taba.ui.dashboard.settings
 
 import android.net.Uri
 import androidx.activity.compose.rememberLauncherForActivityResult
@@ -44,11 +44,11 @@ fun SettingsScreen(
 ) {
     val context = LocalContext.current
     val scrollState = rememberScrollState()
-    
+
     var isNotifEnabled by rememberSaveable { mutableStateOf(true) }
     var isMicEnabled by rememberSaveable { mutableStateOf(true) }
     var isFullHarakat by rememberSaveable { mutableStateOf(true) }
-    
+
     val launcher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.GetContent()
     ) { uri: Uri? ->

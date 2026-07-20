@@ -35,6 +35,9 @@ import com.fadhil.taba.ui.theme.GreenPrimary
 import java.io.File
 import java.io.FileOutputStream
 
+import com.fadhil.taba.data.settings.AppSettingsStore
+import com.fadhil.taba.data.settings.Localization
+
 @Composable
 fun SettingsScreen(
     username: String,
@@ -44,10 +47,13 @@ fun SettingsScreen(
 ) {
     val context = LocalContext.current
     val scrollState = rememberScrollState()
+    val settings by AppSettingsStore.settings.collectAsState()
+    val lang = settings.language
 
     var isNotifEnabled by rememberSaveable { mutableStateOf(true) }
     var isMicEnabled by rememberSaveable { mutableStateOf(true) }
     var isFullHarakat by rememberSaveable { mutableStateOf(true) }
+    var showLanguageDialog by remember { mutableStateOf(false) }
 
     val launcher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.GetContent()
@@ -63,6 +69,50 @@ fun SettingsScreen(
         }
     }
 
+    if (showLanguageDialog) {
+        AlertDialog(
+            onDismissRequest = { showLanguageDialog = false },
+            title = { Text(Localization.getString("select_language", lang)) },
+            text = {
+                Column {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clickable {
+                                AppSettingsStore.setLanguage(context, "in")
+                                showLanguageDialog = false
+                            }
+                            .padding(16.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        RadioButton(selected = lang == "in", onClick = null)
+                        Spacer(modifier = Modifier.width(16.dp))
+                        Text("Bahasa Indonesia")
+                    }
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clickable {
+                                AppSettingsStore.setLanguage(context, "en")
+                                showLanguageDialog = false
+                            }
+                            .padding(16.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        RadioButton(selected = lang == "en", onClick = null)
+                        Spacer(modifier = Modifier.width(16.dp))
+                        Text("English")
+                    }
+                }
+            },
+            confirmButton = {
+                TextButton(onClick = { showLanguageDialog = false }) {
+                    Text(Localization.getString("cancel", lang))
+                }
+            }
+        )
+    }
+
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -70,7 +120,7 @@ fun SettingsScreen(
             .padding(horizontal = 16.dp, vertical = 12.dp)
     ) {
         // Judul (Lebih Kecil)
-        Text(text = "Pengaturan", fontSize = 24.sp, fontWeight = FontWeight.Bold, color = GreenPrimary)
+        Text(text = Localization.getString("settings_title", lang), fontSize = 24.sp, fontWeight = FontWeight.Bold, color = GreenPrimary)
         Text(text = "الإعدادات", fontSize = 16.sp, color = GreenPrimary.copy(alpha = 0.7f), modifier = Modifier.padding(bottom = 16.dp))
 
         // Profile Card (Lebih Kecil)
@@ -97,13 +147,13 @@ fun SettingsScreen(
                 Spacer(modifier = Modifier.width(12.dp))
                 Column(modifier = Modifier.weight(1f)) {
                     Text(text = username, fontWeight = FontWeight.Bold, fontSize = 16.sp, color = GreenPrimary)
-                    Text(text = "Pembelajar Aktif", color = Color.Gray, fontSize = 12.sp)
+                    Text(text = Localization.getString("active_learner", lang), color = Color.Gray, fontSize = 12.sp)
                     Spacer(modifier = Modifier.height(2.dp))
                     Surface(color = Color(0xFFF0FDF4), shape = RoundedCornerShape(6.dp)) {
                         Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(horizontal = 6.dp, vertical = 1.dp)) {
                             Icon(Icons.Default.Star, contentDescription = null, tint = Color(0xFF166534), modifier = Modifier.size(10.dp))
                             Spacer(modifier = Modifier.width(2.dp))
-                            Text(text = "Level 12", color = Color(0xFF166534), fontSize = 10.sp, fontWeight = FontWeight.Bold)
+                            Text(text = "${Localization.getString("level", lang)} 12", color = Color(0xFF166534), fontSize = 10.sp, fontWeight = FontWeight.Bold)
                         }
                     }
                 }
@@ -114,43 +164,53 @@ fun SettingsScreen(
         Spacer(modifier = Modifier.height(24.dp))
 
         // Sections
-        SettingSectionTitle("Pengaturan Umum")
+        SettingSectionTitle(Localization.getString("general_settings", lang))
         Surface(modifier = Modifier.fillMaxWidth(), color = Color.White, shape = RoundedCornerShape(12.dp), border = BorderStroke(1.dp, Color(0xFFF3F4F6))) {
             Column {
-                SettingItem(Icons.Default.Person, "Profil Pengguna")
+                SettingItem(Icons.Default.Person, Localization.getString("user_profile", lang))
                 SettingDivider()
-                SettingItem(Icons.Default.Language, "Bahasa Aplikasi", "Bahasa Indonesia")
+                SettingItem(
+                    Icons.Default.Language, 
+                    Localization.getString("app_language", lang), 
+                    if (lang == "en") "English" else "Bahasa Indonesia",
+                    onClick = { showLanguageDialog = true }
+                )
                 SettingDivider()
-                SettingItem(Icons.Default.VolumeUp, "Suara & Volume")
+                SettingItem(Icons.Default.VolumeUp, Localization.getString("sound_volume", lang))
                 SettingDivider()
-                SettingSwitchItem(Icons.Default.Notifications, "Notifikasi Belajar", isNotifEnabled) { isNotifEnabled = it }
+                SettingSwitchItem(Icons.Default.Notifications, Localization.getString("learning_notifications", lang), isNotifEnabled) { isNotifEnabled = it }
                 SettingDivider()
-                SettingSwitchItem(Icons.Default.Mic, "Izin Mikrofon", isMicEnabled) { isMicEnabled = it }
+                SettingSwitchItem(Icons.Default.Mic, Localization.getString("microphone_permission", lang), isMicEnabled) { isMicEnabled = it }
                 SettingDivider()
-                SettingSwitchItem(Icons.Default.TextFormat, "Mode Harakat Penuh", isFullHarakat, subtitle = "Tampilkan semua harakat dalam teks Arab") { isFullHarakat = it }
+                SettingSwitchItem(
+                    Icons.Default.TextFormat, 
+                    Localization.getString("full_harakat_mode", lang), 
+                    isFullHarakat, 
+                    subtitle = Localization.getString("full_harakat_subtitle", lang)
+                ) { isFullHarakat = it }
                 SettingDivider()
-                SettingItem(Icons.Default.BarChart, "Riwayat Progres")
+                SettingItem(Icons.Default.BarChart, Localization.getString("progress_history", lang))
             }
         }
 
         Spacer(modifier = Modifier.height(16.dp))
-        SettingSectionTitle("Preferensi Belajar")
+        SettingSectionTitle(Localization.getString("learning_preferences", lang))
         Surface(modifier = Modifier.fillMaxWidth(), color = Color.White, shape = RoundedCornerShape(12.dp), border = BorderStroke(1.dp, Color(0xFFF3F4F6))) {
             Column {
-                SettingItem(Icons.Default.Speed, "Kecepatan Audio", "Normal")
+                SettingItem(Icons.Default.Speed, Localization.getString("audio_speed", lang), Localization.getString("normal", lang))
                 SettingDivider()
-                SettingItem(Icons.Default.Wc, "Suara Laki-laki / Perempuan", "Laki-laki")
+                SettingItem(Icons.Default.Wc, Localization.getString("voice_gender", lang), Localization.getString("male", lang))
             }
         }
 
         Spacer(modifier = Modifier.height(16.dp))
         Surface(modifier = Modifier.fillMaxWidth(), color = Color.White, shape = RoundedCornerShape(12.dp), border = BorderStroke(1.dp, Color(0xFFF3F4F6))) {
             Column {
-                SettingItem(Icons.Default.Help, "Bantuan")
+                SettingItem(Icons.Default.Help, Localization.getString("help", lang))
                 SettingDivider()
-                SettingItem(Icons.Default.PrivacyTip, "Kebijakan Privasi")
+                SettingItem(Icons.Default.PrivacyTip, Localization.getString("privacy_policy", lang))
                 SettingDivider()
-                SettingItem(icon = Icons.AutoMirrored.Filled.Logout, title = "Keluar", textColor = Color(0xFFEF4444), onClick = onSignOut)
+                SettingItem(icon = Icons.AutoMirrored.Filled.Logout, title = Localization.getString("sign_out", lang), textColor = Color(0xFFEF4444), onClick = onSignOut)
             }
         }
         Spacer(modifier = Modifier.height(32.dp))

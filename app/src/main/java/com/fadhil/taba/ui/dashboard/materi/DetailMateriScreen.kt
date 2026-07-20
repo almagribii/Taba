@@ -29,6 +29,8 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.fadhil.taba.data.model.Module
 import com.fadhil.taba.ui.theme.GreenPrimary
+import com.fadhil.taba.data.settings.AppSettingsStore
+import com.fadhil.taba.data.settings.Localization
 
 fun String.removeHarakat(): String {
     val regex = Regex("[\u064B-\u065F]")
@@ -44,6 +46,8 @@ fun DetailMateriScreen(
 ) {
     val context = LocalContext.current
     val activity = context as? Activity
+    val settings by AppSettingsStore.settings.collectAsState()
+    val lang = settings.language
     
     // Gunakan rememberSaveable agar state bertahan saat rotasi (Activity Re-creation)
     var textSizeMultiplier by rememberSaveable { mutableStateOf(1.0f) }
@@ -81,12 +85,12 @@ fun DetailMateriScreen(
                 title = { Text(module.title, fontWeight = FontWeight.Bold) },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Kembali")
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = Localization.getString("back", lang))
                     }
                 },
                 actions = {
                     IconButton(onClick = { showSettings = true }) {
-                        Icon(Icons.Default.Settings, contentDescription = "Pengaturan Teks")
+                        Icon(Icons.Default.Settings, contentDescription = Localization.getString("text_settings", lang))
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
@@ -151,9 +155,9 @@ fun DetailMateriScreen(
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                SectionHeader("المفردات (Kosakata)")
+                SectionHeader(Localization.getString("vocabulary", lang))
                 TextButton(onClick = { onPracticeClick(module) }) {
-                    Text("Latihan Sekarang", color = Color(0xFF166534), fontWeight = FontWeight.Bold)
+                    Text(Localization.getString("practice_now", lang), color = Color(0xFF166534), fontWeight = FontWeight.Bold)
                 }
             }
             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -167,14 +171,14 @@ fun DetailMateriScreen(
                         shape = RoundedCornerShape(12.dp),
                         border = BorderStroke(1.dp, Color(0xFF166534))
                     ) {
-                        Text("Lihat Semua Mufrodat (${module.vocabularies.size})", color = Color(0xFF166534))
+                        Text(Localization.getString("see_all_vocab", lang).format(module.vocabularies.size), color = Color(0xFF166534))
                     }
                 }
             }
             
             Spacer(modifier = Modifier.height(24.dp))
             
-            SectionHeader("الأسئلة (Pertanyaan)")
+            SectionHeader(Localization.getString("questions", lang))
             Surface(
                 modifier = Modifier.fillMaxWidth(),
                 color = Color.White,
@@ -215,14 +219,14 @@ fun DetailMateriScreen(
                     .padding(16.dp)
                     .padding(bottom = 32.dp)
             ) {
-                Text("Pengaturan Teks", fontSize = 20.sp, fontWeight = FontWeight.Bold, color = GreenPrimary)
+                Text(Localization.getString("text_settings", lang), fontSize = 20.sp, fontWeight = FontWeight.Bold, color = GreenPrimary)
                 Spacer(modifier = Modifier.height(24.dp))
                 
                 // Ukuran Teks
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Icon(Icons.Default.FormatSize, contentDescription = null, tint = GreenPrimary)
                     Spacer(modifier = Modifier.width(16.dp))
-                    Text("Ukuran Teks", modifier = Modifier.weight(1f))
+                    Text(Localization.getString("text_size", lang), modifier = Modifier.weight(1f))
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         IconButton(onClick = { if (textSizeMultiplier > 0.8f) textSizeMultiplier -= 0.1f }) {
                             Text("-", fontSize = 20.sp, fontWeight = FontWeight.Bold)
@@ -238,7 +242,7 @@ fun DetailMateriScreen(
                 
                 // Harakat
                 Row(verticalAlignment = Alignment.CenterVertically) {
-                    Text("Tampilkan Harakat", modifier = Modifier.weight(1f))
+                    Text(Localization.getString("show_harakat", lang), modifier = Modifier.weight(1f))
                     Switch(
                         checked = showHarakat,
                         onCheckedChange = { showHarakat = it },
@@ -252,14 +256,13 @@ fun DetailMateriScreen(
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Icon(Icons.Default.ScreenRotation, contentDescription = null, tint = GreenPrimary)
                     Spacer(modifier = Modifier.width(16.dp))
-                    Text("Layar Horizontal (Landscape)", modifier = Modifier.weight(1f))
+                    Text(Localization.getString("vertical_layout", lang), modifier = Modifier.weight(1f))
                     Switch(
                         checked = isLandscape,
                         onCheckedChange = { isLandscape = it },
                         colors = SwitchDefaults.colors(checkedThumbColor = Color.White, checkedTrackColor = GreenPrimary)
                     )
                 }
-
             }
         }
     }

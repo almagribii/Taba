@@ -10,6 +10,7 @@ import java.io.FileOutputStream
 import java.io.IOException
 
 data class AppSettings(
+    val language: String = "in", // "in" for Indonesia, "en" for English
     val displayName: String = "",
     val avatarPath: String? = null,
     val darkMode: Boolean = false,
@@ -31,6 +32,7 @@ data class AppSettings(
 
 object AppSettingsStore {
     private const val PREFS_NAME = "app_settings"
+    private const val KEY_LANGUAGE = "language"
     private const val KEY_DISPLAY_NAME = "display_name"
     private const val KEY_AVATAR_PATH = "avatar_path"
     private const val KEY_DARK_MODE = "dark_mode"
@@ -68,6 +70,45 @@ object AppSettingsStore {
         val updated = transform(_settings.value)
         save(context.applicationContext, updated)
         _settings.value = updated
+    }
+
+    fun setLanguage(context: Context, language: String) {
+        update(context) { settings ->
+            val updated = settings.copy(language = language)
+            if (language == "en") {
+                updated.copy(
+                    homeHeroTitle = "Let's Start Speaking!",
+                    homeHeroSubtitle = "Practice Arabic conversation, vocabulary, and pronunciation with AI help.",
+                    homeActionText = "Start Learning",
+                    homeSectionTitle = "Material List",
+                    homeSectionActionText = "See All >",
+                    materiBannerTitle = "6 Interactive Materials",
+                    materiBannerSubtitle = "Vocabulary + hiwar + pronunciation practice",
+                    searchPlaceholder = "Search material...",
+                    mufrodatTitle = "Vocabulary",
+                    mufrodatMaterialsLabel = "Material",
+                    mufrodatPracticeTitle = "Speak this word",
+                    mufrodatPracticeSubtitle = "Press the mic button and speak the word above",
+                    otherVocabHeadingTemplate = "Other Vocabulary in %s"
+                )
+            } else {
+                updated.copy(
+                    homeHeroTitle = "Ayo Mulai Berbicara!",
+                    homeHeroSubtitle = "Latih percakapan, kosakata, dan pelafalan Bahasa Arab dengan bantuan AI.",
+                    homeActionText = "Mulai Belajar",
+                    homeSectionTitle = "Daftar Materi",
+                    homeSectionActionText = "Lihat Semua >",
+                    materiBannerTitle = "6 Materi Interaktif",
+                    materiBannerSubtitle = "Latihan kosakata + hiwar + pelafalan",
+                    searchPlaceholder = "Cari materi...",
+                    mufrodatTitle = "Al-Mufradat",
+                    mufrodatMaterialsLabel = "Materi",
+                    mufrodatPracticeTitle = "Ucapkan kata ini",
+                    mufrodatPracticeSubtitle = "Tekan tombol mic dan ucapkan kata di atas",
+                    otherVocabHeadingTemplate = "Kosakata Lainnya di %s"
+                )
+            }
+        }
     }
 
     fun setDisplayName(context: Context, value: String) {
@@ -155,6 +196,7 @@ object AppSettingsStore {
     private fun load(context: Context): AppSettings {
         val prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
         return AppSettings(
+            language = prefs.getString(KEY_LANGUAGE, fallback.language) ?: fallback.language,
             displayName = prefs.getString(KEY_DISPLAY_NAME, fallback.displayName).orEmpty(),
             avatarPath = prefs.getString(KEY_AVATAR_PATH, fallback.avatarPath),
             darkMode = prefs.getBoolean(KEY_DARK_MODE, fallback.darkMode),
@@ -178,6 +220,7 @@ object AppSettingsStore {
     private fun save(context: Context, settings: AppSettings) {
         context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
             .edit()
+            .putString(KEY_LANGUAGE, settings.language)
             .putString(KEY_DISPLAY_NAME, settings.displayName)
             .putString(KEY_AVATAR_PATH, settings.avatarPath)
             .putBoolean(KEY_DARK_MODE, settings.darkMode)

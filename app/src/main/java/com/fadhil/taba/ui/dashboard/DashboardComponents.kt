@@ -33,6 +33,7 @@ import com.fadhil.taba.ui.theme.GreenPrimary
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import androidx.compose.ui.graphics.asImageBitmap
+import com.fadhil.taba.data.settings.Localization
 import java.io.File
 
 @Composable
@@ -113,6 +114,7 @@ fun TabaTopBar(
 @Composable
 fun TabaBottomBar(
     currentRoute: String,
+    lang: String,
     onNavigate: (String) -> Unit
 ) {
     NavigationBar(
@@ -121,10 +123,10 @@ fun TabaBottomBar(
         modifier = Modifier.height(80.dp)
     ) {
         val items = listOf(
-            BottomNavItem("Beranda", "home", Icons.Outlined.Home, Icons.Filled.Home),
-            BottomNavItem("Materi", "materi", Icons.Outlined.LibraryBooks, Icons.Outlined.LibraryBooks),
-            BottomNavItem("Tanya AI", "chat_ai", Icons.AutoMirrored.Outlined.Chat, Icons.AutoMirrored.Filled.Chat),
-            BottomNavItem("Pengaturan", "settings", Icons.Outlined.Settings, Icons.Filled.Settings)
+            BottomNavItem(Localization.getString("home", lang), "home", Icons.Outlined.Home, Icons.Filled.Home),
+            BottomNavItem(Localization.getString("materi", lang), "materi", Icons.Outlined.LibraryBooks, Icons.Outlined.LibraryBooks),
+            BottomNavItem(Localization.getString("chat_ai", lang), "chat_ai", Icons.AutoMirrored.Outlined.Chat, Icons.AutoMirrored.Filled.Chat),
+            BottomNavItem(Localization.getString("settings", lang), "settings", Icons.Outlined.Settings, Icons.Filled.Settings)
         )
 
         items.forEach { item ->

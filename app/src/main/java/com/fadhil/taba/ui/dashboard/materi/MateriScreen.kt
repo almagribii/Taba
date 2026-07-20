@@ -32,6 +32,8 @@ import com.fadhil.taba.R
 import com.fadhil.taba.data.local.ModuleData
 import com.fadhil.taba.data.model.Module
 import com.fadhil.taba.ui.theme.GreenPrimary
+import com.fadhil.taba.data.settings.AppSettingsStore
+import com.fadhil.taba.data.settings.Localization
 
 @Composable
 fun MateriScreen(
@@ -41,6 +43,9 @@ fun MateriScreen(
     bannerSubtitle: String = "Latihan kosakata + hiwar + pelafalan",
     searchPlaceholder: String = "Cari materi..."
 ) {
+    val settings by AppSettingsStore.settings.collectAsState()
+    val lang = settings.language
+
     var searchQuery by remember { mutableStateOf("") }
     val filteredModules = remember(searchQuery) {
         if (searchQuery.isBlank()) {
@@ -67,7 +72,7 @@ fun MateriScreen(
             verticalArrangement = Arrangement.spacedBy(10.dp)
         ) {
             item(span = { GridItemSpan(2) }) {
-                MateriBanner(bannerTitle = bannerTitle, bannerSubtitle = bannerSubtitle)
+                MateriBanner(bannerTitle = settings.materiBannerTitle, bannerSubtitle = settings.materiBannerSubtitle)
             }
 
             item(span = { GridItemSpan(2) }) {
@@ -80,7 +85,7 @@ fun MateriScreen(
                     OutlinedTextField(
                         value = searchQuery,
                         onValueChange = { searchQuery = it },
-                        placeholder = { Text(searchPlaceholder, color = Color.Gray) },
+                        placeholder = { Text(settings.searchPlaceholder, color = Color.Gray) },
                         leadingIcon = { Icon(Icons.Default.Search, contentDescription = null, tint = Color.Gray) },
                         modifier = Modifier
                             .weight(1f)
@@ -113,14 +118,14 @@ fun MateriScreen(
             if (filteredModules.isEmpty()) {
                 item(span = { GridItemSpan(2) }) {
                     Text(
-                        text = "Materi tidak ditemukan",
+                        text = Localization.getString("no_materi_found", lang),
                         color = Color.Gray,
                         modifier = Modifier.fillMaxWidth().padding(vertical = 24.dp)
                     )
                 }
             } else {
                 items(filteredModules) { module ->
-                    ModuleCardNew(module = module, onClick = { onModuleClick(module) })
+                    ModuleCardNew(module = module, lang = lang, onClick = { onModuleClick(module) })
                 }
             }
         }
@@ -195,7 +200,8 @@ fun MateriBanner(
 }
 
 @Composable
-fun ModuleCardNew(module: Module, onClick: () -> Unit) {
+fun ModuleCardNew(module: Module, lang: String, onClick: () -> Unit) {
+    val exerciseCount = remember { (1..4).random() }
     Surface(
         modifier = Modifier
             .fillMaxWidth()
@@ -270,14 +276,14 @@ fun ModuleCardNew(module: Module, onClick: () -> Unit) {
             Spacer(modifier = Modifier.height(12.dp))
             
             Text(
-                text = "${(1..4).random()}/5 latihan selesai",
+                text = Localization.getString("exercises_completed", lang).format(exerciseCount),
                 fontSize = 10.sp,
                 color = Color.Gray,
                 modifier = Modifier.padding(bottom = 4.dp)
             )
             
             LinearProgressIndicator(
-                progress = { 0.6f },
+                progress = { exerciseCount / 5f },
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(6.dp)

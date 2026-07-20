@@ -29,6 +29,8 @@ import com.fadhil.taba.data.local.ModuleData
 import com.fadhil.taba.data.model.Module
 import com.fadhil.taba.data.model.ModuleVocabulary
 import com.fadhil.taba.ui.theme.GreenPrimary
+import com.fadhil.taba.data.settings.AppSettingsStore
+import com.fadhil.taba.data.settings.Localization
 
 @Composable
 fun MufrodatScreen(
@@ -41,6 +43,9 @@ fun MufrodatScreen(
     practiceSubtitle: String = "Tekan tombol mic dan ucapkan kata di atas",
     otherVocabHeadingTemplate: String = "Kosakata Lainnya di %s"
 ) {
+    val settings by AppSettingsStore.settings.collectAsState()
+    val lang = settings.language
+    
     val module = initialModule ?: ModuleData.modules[0]
     var currentVocabIndex by remember { mutableStateOf(0) }
     val currentVocab = module.vocabularies[currentVocabIndex]
@@ -56,15 +61,17 @@ fun MufrodatScreen(
         MufrodatHeader(
             module = module,
             onBack = onBack,
-            headerTitle = headerTitle,
-            headerSubtitle = headerSubtitle,
-            materialsLabel = materialsLabel
+            headerTitle = settings.mufrodatTitle,
+            headerSubtitle = settings.mufrodatSubtitle,
+            materialsLabel = settings.mufrodatMaterialsLabel,
+            lang = lang
         )
         Spacer(modifier = Modifier.height(16.dp))
         MufrodatPracticeCard(
             vocab = currentVocab,
-            title = practiceTitle,
-            subtitle = practiceSubtitle,
+            title = settings.mufrodatPracticeTitle,
+            subtitle = settings.mufrodatPracticeSubtitle,
+            lang = lang,
             onNext = {
                 if (currentVocabIndex < module.vocabularies.size - 1) {
                     currentVocabIndex++
@@ -74,12 +81,13 @@ fun MufrodatScreen(
             }
         )
         Spacer(modifier = Modifier.height(24.dp))
-        AIFeedbackSection()
+        AIFeedbackSection(lang)
         Spacer(modifier = Modifier.height(24.dp))
         OtherVocabSection(
             module = module,
             currentVocabIndex = currentVocabIndex,
-            headingTemplate = otherVocabHeadingTemplate,
+            headingTemplate = settings.otherVocabHeadingTemplate,
+            lang = lang,
             onVocabClick = { index -> currentVocabIndex = index }
         )
         Spacer(modifier = Modifier.height(100.dp))
@@ -92,7 +100,8 @@ fun MufrodatHeader(
     onBack: () -> Unit,
     headerTitle: String,
     headerSubtitle: String,
-    materialsLabel: String
+    materialsLabel: String,
+    lang: String
 ) {
     Column(
         modifier = Modifier
@@ -107,7 +116,7 @@ fun MufrodatHeader(
                 onClick = onBack,
                 modifier = Modifier.size(40.dp).background(Color(0xFFF0F2EE), CircleShape)
             ) {
-                Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back", tint = GreenPrimary)
+                Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = Localization.getString("back", lang), tint = GreenPrimary)
             }
             
             Column(
@@ -157,6 +166,7 @@ fun MufrodatPracticeCard(
     vocab: ModuleVocabulary,
     title: String,
     subtitle: String,
+    lang: String,
     onNext: () -> Unit
 ) {
     Surface(
@@ -202,7 +212,7 @@ fun MufrodatPracticeCard(
                 ) {
                     Icon(Icons.Default.VolumeUp, contentDescription = null, tint = GreenPrimary)
                     Spacer(modifier = Modifier.width(4.dp))
-                    Text("Dengarkan", color = GreenPrimary, fontSize = 12.sp)
+                    Text(Localization.getString("listen", lang), color = GreenPrimary, fontSize = 12.sp)
                 }
 
                 Button(
@@ -213,7 +223,7 @@ fun MufrodatPracticeCard(
                 ) {
                     Icon(Icons.Default.Mic, contentDescription = null, tint = GreenPrimary)
                     Spacer(modifier = Modifier.width(4.dp))
-                    Text("Ucapkan", color = GreenPrimary, fontSize = 12.sp)
+                    Text(Localization.getString("speak", lang), color = GreenPrimary, fontSize = 12.sp)
                 }
 
                 Button(
@@ -222,7 +232,7 @@ fun MufrodatPracticeCard(
                     colors = ButtonDefaults.buttonColors(containerColor = GreenPrimary),
                     shape = RoundedCornerShape(12.dp)
                 ) {
-                    Text("Berikutnya", color = Color.White)
+                    Text(Localization.getString("next", lang), color = Color.White)
                     Spacer(modifier = Modifier.width(4.dp))
                     Icon(Icons.Default.ChevronRight, contentDescription = null, tint = Color.White)
                 }
@@ -264,7 +274,7 @@ fun MufrodatPracticeCard(
 }
 
 @Composable
-fun AIFeedbackSection() {
+fun AIFeedbackSection(lang: String) {
     Column(modifier = Modifier.padding(horizontal = 16.dp)) {
         Surface(
             modifier = Modifier.fillMaxWidth(),
@@ -277,17 +287,17 @@ fun AIFeedbackSection() {
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         Icon(Icons.Default.SmartToy, contentDescription = null, tint = Color(0xFF166534), modifier = Modifier.size(20.dp))
                         Spacer(modifier = Modifier.width(8.dp))
-                        Text(text = "Umpan Balik AI", fontSize = 12.sp, fontWeight = FontWeight.Bold, color = Color(0xFF166534))
+                        Text(text = Localization.getString("ai_feedback", lang), fontSize = 12.sp, fontWeight = FontWeight.Bold, color = Color(0xFF166534))
                     }
                     Spacer(modifier = Modifier.height(8.dp))
-                    Text(text = "Pelafalan 88% - Baik", fontSize = 14.sp, fontWeight = FontWeight.Medium, color = GreenPrimary)
+                    Text(text = "${Localization.getString("pronunciation", lang)} 88% - Baik", fontSize = 14.sp, fontWeight = FontWeight.Medium, color = GreenPrimary)
                     Text(text = "Perjelas bunyi huruf رَ", fontSize = 12.sp, color = Color.Gray)
                     
                     Spacer(modifier = Modifier.height(8.dp))
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         Icon(Icons.Default.Info, contentDescription = null, tint = Color.Gray, modifier = Modifier.size(12.dp))
                         Spacer(modifier = Modifier.width(4.dp))
-                        Text(text = "Fitur AI memerlukan koneksi internet", fontSize = 9.sp, color = Color.Gray)
+                        Text(text = Localization.getString("ai_note", lang), fontSize = 9.sp, color = Color.Gray)
                     }
                 }
                 
@@ -312,6 +322,7 @@ fun OtherVocabSection(
     module: Module,
     currentVocabIndex: Int,
     headingTemplate: String,
+    lang: String,
     onVocabClick: (Int) -> Unit
 ) {
     Column(modifier = Modifier.fillMaxWidth()) {
@@ -321,7 +332,7 @@ fun OtherVocabSection(
             verticalAlignment = Alignment.CenterVertically
         ) {
             Text(text = headingTemplate.format(module.arabicTitle), fontSize = 14.sp, fontWeight = FontWeight.Bold, color = GreenPrimary)
-            Text(text = "Lihat Semua >", fontSize = 12.sp, color = Color.Gray, modifier = Modifier.clickable { })
+            Text(text = Localization.getString("see_all", lang), fontSize = 12.sp, color = Color.Gray, modifier = Modifier.clickable { })
         }
         
         Spacer(modifier = Modifier.height(12.dp))

@@ -82,6 +82,7 @@ fun DashboardScreen(
             bottomBar = {
                 TabaBottomBar(
                     currentRoute = currentRoute,
+                    lang = settings.language,
                     onNavigate = { currentRoute = it }
                 )
             }

@@ -18,6 +18,8 @@ import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.fadhil.taba.R
 import com.fadhil.taba.ui.theme.GreenPrimary
+import com.fadhil.taba.data.settings.AppSettingsStore
+import com.fadhil.taba.data.settings.Localization
 
 @Composable
 fun WelcomeScreen(
@@ -28,6 +30,9 @@ fun WelcomeScreen(
     val isLoading by viewModel.isLoading.collectAsState()
     val error by viewModel.error.collectAsState()
     val user by viewModel.currentUser.collectAsState()
+    
+    val settings by AppSettingsStore.settings.collectAsState()
+    val lang = settings.language
 
     // Navigasi otomatis jika login berhasil
     LaunchedEffect(user) {
@@ -57,7 +62,7 @@ fun WelcomeScreen(
         ) {
             if (error != null) {
                 Text(
-                    text = "Gagal login: ${error}",
+                    text = "${Localization.getString("login_failed", lang)}: ${error}",
                     color = MaterialTheme.colorScheme.error,
                     fontSize = 12.sp,
                     textAlign = TextAlign.Center,
@@ -80,7 +85,7 @@ fun WelcomeScreen(
                 if (isLoading) {
                     CircularProgressIndicator(color = Color.White, modifier = Modifier.size(24.dp))
                 } else {
-                    Text(text = "Masuk dengan Google", fontWeight = FontWeight.Bold)
+                    Text(text = Localization.getString("sign_in_google", lang), fontWeight = FontWeight.Bold)
                 }
             }
             

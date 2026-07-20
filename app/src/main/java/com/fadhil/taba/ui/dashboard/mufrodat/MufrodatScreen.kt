@@ -31,6 +31,7 @@ import com.fadhil.taba.data.model.ModuleVocabulary
 import com.fadhil.taba.ui.theme.GreenPrimary
 import com.fadhil.taba.data.settings.AppSettingsStore
 import com.fadhil.taba.data.settings.Localization
+import com.fadhil.taba.ui.dashboard.materi.removeHarakat
 
 @Composable
 fun MufrodatScreen(
@@ -45,12 +46,15 @@ fun MufrodatScreen(
 ) {
     val settings by AppSettingsStore.settings.collectAsState()
     val lang = settings.language
+    val showHarakat = settings.isFullHarakat
     
     val module = initialModule ?: ModuleData.modules[0]
     var currentVocabIndex by remember { mutableStateOf(0) }
     val currentVocab = module.vocabularies[currentVocabIndex]
     
     val backgroundColor = Color(0xFFF9F7F2)
+
+    fun formatArabic(text: String): String = if (showHarakat) text else text.removeHarakat()
 
     Column(
         modifier = Modifier
@@ -62,9 +66,10 @@ fun MufrodatScreen(
             module = module,
             onBack = onBack,
             headerTitle = settings.mufrodatTitle,
-            headerSubtitle = settings.mufrodatSubtitle,
+            headerSubtitle = formatArabic(settings.mufrodatSubtitle),
             materialsLabel = settings.mufrodatMaterialsLabel,
-            lang = lang
+            lang = lang,
+            formatArabic = ::formatArabic
         )
         Spacer(modifier = Modifier.height(16.dp))
         MufrodatPracticeCard(
@@ -72,6 +77,7 @@ fun MufrodatScreen(
             title = settings.mufrodatPracticeTitle,
             subtitle = settings.mufrodatPracticeSubtitle,
             lang = lang,
+            formatArabic = ::formatArabic,
             onNext = {
                 if (currentVocabIndex < module.vocabularies.size - 1) {
                     currentVocabIndex++
@@ -88,6 +94,7 @@ fun MufrodatScreen(
             currentVocabIndex = currentVocabIndex,
             headingTemplate = settings.otherVocabHeadingTemplate,
             lang = lang,
+            formatArabic = ::formatArabic,
             onVocabClick = { index -> currentVocabIndex = index }
         )
         Spacer(modifier = Modifier.height(100.dp))
@@ -101,7 +108,8 @@ fun MufrodatHeader(
     headerTitle: String,
     headerSubtitle: String,
     materialsLabel: String,
-    lang: String
+    lang: String,
+    formatArabic: (String) -> String
 ) {
     Column(
         modifier = Modifier
@@ -123,8 +131,8 @@ fun MufrodatHeader(
                 modifier = Modifier.weight(1f),
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
-            Text(text = headerTitle, fontSize = 24.sp, fontWeight = FontWeight.Bold, color = GreenPrimary)
-            Text(text = headerSubtitle, fontSize = 18.sp, color = GreenPrimary.copy(alpha = 0.7f))
+                Text(text = headerTitle, fontSize = 24.sp, fontWeight = FontWeight.Bold, color = GreenPrimary)
+                Text(text = headerSubtitle, fontSize = 18.sp, color = GreenPrimary.copy(alpha = 0.7f))
             }
 
             Box {
@@ -153,7 +161,7 @@ fun MufrodatHeader(
                 Spacer(modifier = Modifier.width(8.dp))
                 val moduleTitle = if (lang == "en") module.titleEn else module.title
                 Text(
-                    text = "$materialsLabel: ${module.arabicTitle} / ${if (lang == "en") "In" else "Di"} $moduleTitle",
+                    text = "$materialsLabel: ${formatArabic(module.arabicTitle)} / ${if (lang == "en") "In" else "Di"} $moduleTitle",
                     fontSize = 12.sp,
                     color = Color.Gray
                 )
@@ -168,6 +176,7 @@ fun MufrodatPracticeCard(
     title: String,
     subtitle: String,
     lang: String,
+    formatArabic: (String) -> String,
     onNext: () -> Unit
 ) {
     Surface(
@@ -194,7 +203,7 @@ fun MufrodatPracticeCard(
                     IconButton(onClick = { }, modifier = Modifier.align(Alignment.End)) {
                         Icon(Icons.Default.StarBorder, contentDescription = null, tint = Color.Gray)
                     }
-                    Text(text = vocab.arabic, fontSize = 36.sp, fontWeight = FontWeight.Bold, color = GreenPrimary)
+                    Text(text = formatArabic(vocab.arabic), fontSize = 36.sp, fontWeight = FontWeight.Bold, color = GreenPrimary)
                     Text(text = if (lang == "en") vocab.english else vocab.indonesian, fontSize = 18.sp, color = Color.Gray)
                 }
             }
@@ -324,6 +333,7 @@ fun OtherVocabSection(
     currentVocabIndex: Int,
     headingTemplate: String,
     lang: String,
+    formatArabic: (String) -> String,
     onVocabClick: (Int) -> Unit
 ) {
     Column(modifier = Modifier.fillMaxWidth()) {
@@ -332,8 +342,7 @@ fun OtherVocabSection(
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically
         ) {
-            val moduleTitle = if (lang == "en") module.arabicTitle else module.arabicTitle // Arabic title stays the same
-            Text(text = headingTemplate.format(moduleTitle), fontSize = 14.sp, fontWeight = FontWeight.Bold, color = GreenPrimary)
+            Text(text = headingTemplate.format(formatArabic(module.arabicTitle)), fontSize = 14.sp, fontWeight = FontWeight.Bold, color = GreenPrimary)
             Text(text = Localization.getString("see_all", lang), fontSize = 12.sp, color = Color.Gray, modifier = Modifier.clickable { })
         }
         
@@ -348,6 +357,7 @@ fun OtherVocabSection(
                 VocabMiniCard(
                     vocab = vocab,
                     lang = lang,
+                    formatArabic = formatArabic,
                     isSelected = index == currentVocabIndex,
                     onClick = { onVocabClick(index) }
                 )
@@ -357,7 +367,7 @@ fun OtherVocabSection(
 }
 
 @Composable
-fun VocabMiniCard(vocab: ModuleVocabulary, lang: String, isSelected: Boolean, onClick: () -> Unit) {
+fun VocabMiniCard(vocab: ModuleVocabulary, lang: String, formatArabic: (String) -> String, isSelected: Boolean, onClick: () -> Unit) {
     Surface(
         modifier = Modifier.size(width = 110.dp, height = 140.dp).clickable { onClick() },
         color = Color.White,
@@ -370,7 +380,7 @@ fun VocabMiniCard(vocab: ModuleVocabulary, lang: String, isSelected: Boolean, on
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.SpaceBetween
         ) {
-            Text(text = vocab.arabic, fontSize = 14.sp, fontWeight = FontWeight.Bold, color = GreenPrimary)
+            Text(text = formatArabic(vocab.arabic), fontSize = 14.sp, fontWeight = FontWeight.Bold, color = GreenPrimary)
             Image(
                 painter = painterResource(id = vocab.imageResId ?: R.drawable.materi),
                 contentDescription = null,

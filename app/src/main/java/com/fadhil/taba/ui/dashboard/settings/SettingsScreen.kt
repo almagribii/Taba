@@ -32,11 +32,10 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.fadhil.taba.R
 import com.fadhil.taba.ui.theme.GreenPrimary
-import java.io.File
-import java.io.FileOutputStream
-
 import com.fadhil.taba.data.settings.AppSettingsStore
 import com.fadhil.taba.data.settings.Localization
+import java.io.File
+import java.io.FileOutputStream
 
 @Composable
 fun SettingsScreen(
@@ -49,10 +48,10 @@ fun SettingsScreen(
     val scrollState = rememberScrollState()
     val settings by AppSettingsStore.settings.collectAsState()
     val lang = settings.language
+    val isFullHarakat = settings.isFullHarakat
 
     var isNotifEnabled by rememberSaveable { mutableStateOf(true) }
     var isMicEnabled by rememberSaveable { mutableStateOf(true) }
-    var isFullHarakat by rememberSaveable { mutableStateOf(true) }
     var showLanguageDialog by remember { mutableStateOf(false) }
 
     val launcher = rememberLauncherForActivityResult(
@@ -187,7 +186,7 @@ fun SettingsScreen(
                     Localization.getString("full_harakat_mode", lang), 
                     isFullHarakat, 
                     subtitle = Localization.getString("full_harakat_subtitle", lang)
-                ) { isFullHarakat = it }
+                ) { AppSettingsStore.setFullHarakat(context, it) }
                 SettingDivider()
                 SettingItem(Icons.Default.BarChart, Localization.getString("progress_history", lang))
             }

@@ -49,10 +49,13 @@ fun DetailMateriScreen(
     val settings by AppSettingsStore.settings.collectAsState()
     val lang = settings.language
     
-    // Gunakan rememberSaveable agar state bertahan saat rotasi (Activity Re-creation)
+    // States for UI customization
     var textSizeMultiplier by rememberSaveable { mutableStateOf(1.0f) }
-    var showHarakat by rememberSaveable { mutableStateOf(true) }
     var isLandscape by rememberSaveable { mutableStateOf(false) }
+    
+    // Harakat logic: follows global unless overridden locally
+    var localHarakatOverride by rememberSaveable { mutableStateOf<Boolean?>(null) }
+    val showHarakat = localHarakatOverride ?: settings.isFullHarakat
     
     var showSettings by remember { mutableStateOf(false) }
     val sheetState = rememberModalBottomSheetState()
@@ -66,7 +69,6 @@ fun DetailMateriScreen(
         activity?.requestedOrientation = if (isLandscape) {
             ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE
         } else {
-            // Paksa Portrait saat dimatikan, bukan UNSPECIFIED agar tidak mengikuti sensor
             ActivityInfo.SCREEN_ORIENTATION_PORTRAIT
         }
     }
@@ -249,7 +251,7 @@ fun DetailMateriScreen(
                     Text(Localization.getString("show_harakat", lang), modifier = Modifier.weight(1f))
                     Switch(
                         checked = showHarakat,
-                        onCheckedChange = { showHarakat = it },
+                        onCheckedChange = { localHarakatOverride = it },
                         colors = SwitchDefaults.colors(checkedThumbColor = Color.White, checkedTrackColor = GreenPrimary)
                     )
                 }

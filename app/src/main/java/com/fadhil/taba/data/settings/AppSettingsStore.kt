@@ -11,6 +11,7 @@ import java.io.IOException
 
 data class AppSettings(
     val language: String = "in", // "in" for Indonesia, "en" for English
+    val isFullHarakat: Boolean = true,
     val displayName: String = "",
     val avatarPath: String? = null,
     val darkMode: Boolean = false,
@@ -33,6 +34,7 @@ data class AppSettings(
 object AppSettingsStore {
     private const val PREFS_NAME = "app_settings"
     private const val KEY_LANGUAGE = "language"
+    private const val KEY_FULL_HARAKAT = "is_full_harakat"
     private const val KEY_DISPLAY_NAME = "display_name"
     private const val KEY_AVATAR_PATH = "avatar_path"
     private const val KEY_DARK_MODE = "dark_mode"
@@ -109,6 +111,10 @@ object AppSettingsStore {
                 )
             }
         }
+    }
+
+    fun setFullHarakat(context: Context, enabled: Boolean) {
+        update(context) { it.copy(isFullHarakat = enabled) }
     }
 
     fun setDisplayName(context: Context, value: String) {
@@ -197,6 +203,7 @@ object AppSettingsStore {
         val prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
         return AppSettings(
             language = prefs.getString(KEY_LANGUAGE, fallback.language) ?: fallback.language,
+            isFullHarakat = prefs.getBoolean(KEY_FULL_HARAKAT, fallback.isFullHarakat),
             displayName = prefs.getString(KEY_DISPLAY_NAME, fallback.displayName).orEmpty(),
             avatarPath = prefs.getString(KEY_AVATAR_PATH, fallback.avatarPath),
             darkMode = prefs.getBoolean(KEY_DARK_MODE, fallback.darkMode),
@@ -221,6 +228,7 @@ object AppSettingsStore {
         context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
             .edit()
             .putString(KEY_LANGUAGE, settings.language)
+            .putBoolean(KEY_FULL_HARAKAT, settings.isFullHarakat)
             .putString(KEY_DISPLAY_NAME, settings.displayName)
             .putString(KEY_AVATAR_PATH, settings.avatarPath)
             .putBoolean(KEY_DARK_MODE, settings.darkMode)

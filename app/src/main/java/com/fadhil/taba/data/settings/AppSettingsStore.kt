@@ -28,7 +28,12 @@ data class AppSettings(
     val mufrodatMaterialsLabel: String = "Materi",
     val mufrodatPracticeTitle: String = "Ucapkan kata ini",
     val mufrodatPracticeSubtitle: String = "Tekan tombol mic dan ucapkan kata di atas",
-    val otherVocabHeadingTemplate: String = "Kosakata Lainnya di %s"
+    val otherVocabHeadingTemplate: String = "Kosakata Lainnya di %s",
+    val audioSpeed: Float = 1.0f,
+    val voiceGender: String = "female", // "male" or "female"
+    val mufrodatFullHarakat: Boolean = true,
+    val mufrodatHorizontalLayout: Boolean = false,
+    val starredVocabKeys: Set<String> = emptySet()
 )
 
 object AppSettingsStore {
@@ -58,6 +63,12 @@ object AppSettingsStore {
     private val fallback = AppSettings()
     private val _settings = MutableStateFlow(fallback)
     val settings: StateFlow<AppSettings> = _settings.asStateFlow()
+
+    private const val KEY_AUDIO_SPEED = "audio_speed"
+    private const val KEY_VOICE_GENDER = "voice_gender"
+    private const val KEY_MUFRODAT_FULL_HARAKAT = "mufrodat_full_harakat"
+    private const val KEY_MUFRODAT_HORIZONTAL_LAYOUT = "mufrodat_horizontal_layout"
+    private const val KEY_STARRED_VOCAB = "starred_vocab"
 
     fun initialize(context: Context) {
         synchronized(lock) {
@@ -181,6 +192,31 @@ object AppSettingsStore {
         update(context) { it.copy(otherVocabHeadingTemplate = value) }
     }
 
+    fun setAudioSpeed(context: Context, speed: Float) {
+        update(context) { it.copy(audioSpeed = speed) }
+    }
+
+    fun setVoiceGender(context: Context, gender: String) {
+        update(context) { it.copy(voiceGender = gender) }
+    }
+
+    fun setMufrodatFullHarakat(context: Context, enabled: Boolean) {
+        update(context) { it.copy(mufrodatFullHarakat = enabled) }
+    }
+
+    fun setMufrodatHorizontalLayout(context: Context, enabled: Boolean) {
+        update(context) { it.copy(mufrodatHorizontalLayout = enabled) }
+    }
+
+    fun toggleStar(context: Context, moduleId: Int, arabic: String) {
+        update(context) { settings ->
+            val key = "${moduleId}_$arabic"
+            val current = settings.starredVocabKeys.toMutableSet()
+            if (current.contains(key)) current.remove(key) else current.add(key)
+            settings.copy(starredVocabKeys = current)
+        }
+    }
+
     fun setAvatarFromUri(context: Context, uri: Uri?) {
         initialize(context)
         val updatedPath = if (uri == null) {
@@ -220,7 +256,12 @@ object AppSettingsStore {
             mufrodatMaterialsLabel = prefs.getString(KEY_MUFRODAT_MATERIALS_LABEL, fallback.mufrodatMaterialsLabel).orEmpty(),
             mufrodatPracticeTitle = prefs.getString(KEY_MUFRODAT_PRACTICE_TITLE, fallback.mufrodatPracticeTitle).orEmpty(),
             mufrodatPracticeSubtitle = prefs.getString(KEY_MUFRODAT_PRACTICE_SUBTITLE, fallback.mufrodatPracticeSubtitle).orEmpty(),
-            otherVocabHeadingTemplate = prefs.getString(KEY_OTHER_VOCAB_TEMPLATE, fallback.otherVocabHeadingTemplate).orEmpty()
+            otherVocabHeadingTemplate = prefs.getString(KEY_OTHER_VOCAB_TEMPLATE, fallback.otherVocabHeadingTemplate).orEmpty(),
+            audioSpeed = prefs.getFloat(KEY_AUDIO_SPEED, fallback.audioSpeed),
+            voiceGender = prefs.getString(KEY_VOICE_GENDER, fallback.voiceGender) ?: fallback.voiceGender,
+            mufrodatFullHarakat = prefs.getBoolean(KEY_MUFRODAT_FULL_HARAKAT, fallback.mufrodatFullHarakat),
+            mufrodatHorizontalLayout = prefs.getBoolean(KEY_MUFRODAT_HORIZONTAL_LAYOUT, fallback.mufrodatHorizontalLayout),
+            starredVocabKeys = prefs.getStringSet(KEY_STARRED_VOCAB, emptySet()) ?: emptySet()
         )
     }
 
@@ -246,6 +287,11 @@ object AppSettingsStore {
             .putString(KEY_MUFRODAT_PRACTICE_TITLE, settings.mufrodatPracticeTitle)
             .putString(KEY_MUFRODAT_PRACTICE_SUBTITLE, settings.mufrodatPracticeSubtitle)
             .putString(KEY_OTHER_VOCAB_TEMPLATE, settings.otherVocabHeadingTemplate)
+            .putFloat(KEY_AUDIO_SPEED, settings.audioSpeed)
+            .putString(KEY_VOICE_GENDER, settings.voiceGender)
+            .putBoolean(KEY_MUFRODAT_FULL_HARAKAT, settings.mufrodatFullHarakat)
+            .putBoolean(KEY_MUFRODAT_HORIZONTAL_LAYOUT, settings.mufrodatHorizontalLayout)
+            .putStringSet(KEY_STARRED_VOCAB, settings.starredVocabKeys)
             .apply()
     }
 

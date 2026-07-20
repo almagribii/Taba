@@ -15,5 +15,6 @@ data class ModuleVocabulary(
     val arabic: String,
     val indonesian: String,
     val english: String,
-    val imageResId: Int? = null
+    val imageResId: Int? = null,
+    val isStarred: Boolean = false
 )

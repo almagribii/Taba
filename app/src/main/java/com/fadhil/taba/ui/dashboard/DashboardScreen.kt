@@ -65,7 +65,10 @@ fun DashboardScreen(
     } else if (currentRoute == "mufrodat_internal") {
         MufrodatScreen(
             initialModule = selectedModuleForPractice,
-            onBack = { currentRoute = "materi" }
+            onBack = { 
+                selectedModuleId = practiceModuleId
+                currentRoute = "materi" 
+            }
         )
     } else {
         Scaffold(

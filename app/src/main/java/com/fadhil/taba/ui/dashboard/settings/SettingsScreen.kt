@@ -53,6 +53,8 @@ fun SettingsScreen(
     var isNotifEnabled by rememberSaveable { mutableStateOf(true) }
     var isMicEnabled by rememberSaveable { mutableStateOf(true) }
     var showLanguageDialog by remember { mutableStateOf(false) }
+    var showAudioSpeedDialog by remember { mutableStateOf(false) }
+    var showGenderDialog by remember { mutableStateOf(false) }
 
     val launcher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.GetContent()
@@ -106,6 +108,72 @@ fun SettingsScreen(
             },
             confirmButton = {
                 TextButton(onClick = { showLanguageDialog = false }) {
+                    Text(Localization.getString("cancel", lang))
+                }
+            }
+        )
+    }
+
+    if (showAudioSpeedDialog) {
+        AlertDialog(
+            onDismissRequest = { showAudioSpeedDialog = false },
+            title = { Text(Localization.getString("audio_speed", lang)) },
+            text = {
+                Column {
+                    listOf(0.5f, 0.75f, 1.0f, 1.25f, 1.5f).forEach { speed ->
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clickable {
+                                    AppSettingsStore.setAudioSpeed(context, speed)
+                                    showAudioSpeedDialog = false
+                                }
+                                .padding(16.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            RadioButton(selected = settings.audioSpeed == speed, onClick = null)
+                            Spacer(modifier = Modifier.width(16.dp))
+                            Text("${speed}x")
+                        }
+                    }
+                }
+            },
+            confirmButton = {
+                TextButton(onClick = { showAudioSpeedDialog = false }) {
+                    Text(Localization.getString("cancel", lang))
+                }
+            }
+        )
+    }
+
+    if (showGenderDialog) {
+        AlertDialog(
+            onDismissRequest = { showGenderDialog = false },
+            title = { Text(Localization.getString("voice_gender", lang)) },
+            text = {
+                Column {
+                    listOf("male", "female").forEach { gender ->
+                        val label = if (gender == "male") Localization.getString("male", lang) 
+                                   else Localization.getString("female", lang)
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clickable {
+                                    AppSettingsStore.setVoiceGender(context, gender)
+                                    showGenderDialog = false
+                                }
+                                .padding(16.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            RadioButton(selected = settings.voiceGender == gender, onClick = null)
+                            Spacer(modifier = Modifier.width(16.dp))
+                            Text(label)
+                        }
+                    }
+                }
+            },
+            confirmButton = {
+                TextButton(onClick = { showGenderDialog = false }) {
                     Text(Localization.getString("cancel", lang))
                 }
             }
@@ -196,9 +264,19 @@ fun SettingsScreen(
         SettingSectionTitle(Localization.getString("learning_preferences", lang))
         Surface(modifier = Modifier.fillMaxWidth(), color = Color.White, shape = RoundedCornerShape(12.dp), border = BorderStroke(1.dp, Color(0xFFF3F4F6))) {
             Column {
-                SettingItem(Icons.Default.Speed, Localization.getString("audio_speed", lang), Localization.getString("normal", lang))
+                SettingItem(
+                    Icons.Default.Speed, 
+                    Localization.getString("audio_speed", lang), 
+                    "${settings.audioSpeed}x",
+                    onClick = { showAudioSpeedDialog = true }
+                )
                 SettingDivider()
-                SettingItem(Icons.Default.Wc, Localization.getString("voice_gender", lang), Localization.getString("male", lang))
+                SettingItem(
+                    Icons.Default.Wc, 
+                    Localization.getString("voice_gender", lang), 
+                    if (settings.voiceGender == "male") Localization.getString("male", lang) else Localization.getString("female", lang),
+                    onClick = { showGenderDialog = true }
+                )
             }
         }
 

@@ -1,6 +1,9 @@
+import java.util.Properties
+
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.compose)
+    alias(libs.plugins.kotlin.serialization)
 }
 
 android {
@@ -20,9 +23,20 @@ android {
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
 
+        // Load local.properties
+        val localProperties = Properties()
+        val localPropertiesFile = rootProject.file("local.properties")
+        if (localPropertiesFile.exists()) {
+            localProperties.load(localPropertiesFile.inputStream())
+        }
+
         // Supabase Config
-        buildConfigField("String", "SUPABASE_URL", "\"${project.findProperty("SUPABASE_URL")}\"")
-        buildConfigField("String", "SUPABASE_ANON_KEY", "\"${project.findProperty("SUPABASE_ANON_KEY")}\"")
+        buildConfigField("String", "SUPABASE_URL", "\"${project.findProperty("SUPABASE_URL") ?: ""}\"")
+        buildConfigField("String", "SUPABASE_ANON_KEY", "\"${project.findProperty("SUPABASE_ANON_KEY") ?: ""}\"")
+        
+        // Gemini API Keys
+        buildConfigField("String", "GEMINI_API_KEY_CHATBOT", "\"${localProperties.getProperty("GEMINI_API_KEY_CHATBOT") ?: ""}\"")
+        buildConfigField("String", "GEMINI_API_KEY_HIWAR", "\"${localProperties.getProperty("GEMINI_API_KEY_HIWAR") ?: ""}\"")
     }
 
     buildTypes {
@@ -39,6 +53,15 @@ android {
     buildFeatures {
         compose = true
         buildConfig = true
+    }
+    
+    // Solusi untuk Konflik Ktor: Memaksa semua dependensi menggunakan Ktor 3
+    configurations.all {
+        resolutionStrategy.eachDependency {
+            if (requested.group == "io.ktor") {
+                useVersion("3.1.1")
+            }
+        }
     }
 }
 
@@ -59,17 +82,18 @@ dependencies {
     implementation(libs.supabase.postgrest)
     implementation(libs.supabase.gotrue)
     implementation(libs.supabase.storage)
+    
+    // Ktor (Dipaksa ke 3.1.1)
     implementation(libs.ktor.client.okhttp)
-    implementation("io.ktor:ktor-client-content-negotiation:${libs.versions.ktor.get()}")
-    implementation("io.ktor:ktor-serialization-kotlinx-json:${libs.versions.ktor.get()}")
+    implementation("io.ktor:ktor-client-content-negotiation:3.1.1")
+    implementation("io.ktor:ktor-serialization-kotlinx-json:3.1.1")
     implementation(libs.kotlinx.serialization.json)
 
     // Google Auth & Credentials
     implementation(libs.androidx.credentials)
     implementation(libs.androidx.credentials.play.services.auth)
     implementation(libs.google.id)
-    // implementation(libs.generativeai) // Removed due to Ktor 3 conflict
-
+    
     testImplementation(libs.junit)
     androidTestImplementation(platform(libs.androidx.compose.bom))
     androidTestImplementation(libs.androidx.compose.ui.test.junit4)

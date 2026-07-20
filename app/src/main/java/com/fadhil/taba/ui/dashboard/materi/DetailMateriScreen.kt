@@ -5,6 +5,8 @@ import android.content.pm.ActivityInfo
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.lazy.LazyRow
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
@@ -31,6 +33,7 @@ import com.fadhil.taba.data.model.Module
 import com.fadhil.taba.ui.theme.GreenPrimary
 import com.fadhil.taba.data.settings.AppSettingsStore
 import com.fadhil.taba.data.settings.Localization
+import com.fadhil.taba.ui.dashboard.mufrodat.VocabMiniCard
 
 fun String.removeHarakat(): String {
     val regex = Regex("[\u064B-\u065F]")
@@ -59,6 +62,12 @@ fun DetailMateriScreen(
     
     var showSettings by remember { mutableStateOf(false) }
     val sheetState = rememberModalBottomSheetState()
+
+    val vocabList = remember(module, settings.starredVocabKeys) {
+        module.vocabularies.map { vocab ->
+            vocab.copy(isStarred = settings.starredVocabKeys.contains("${module.id}_${vocab.arabic}"))
+        }.sortedByDescending { it.isStarred }
+    }
 
     fun formatArabic(text: String): String {
         return if (showHarakat) text else text.removeHarakat()
@@ -165,20 +174,20 @@ fun DetailMateriScreen(
                     Text(Localization.getString("practice_now", lang), color = Color(0xFF166534), fontWeight = FontWeight.Bold)
                 }
             }
-            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                module.vocabularies.take(3).forEach { vocab ->
-                    val meaning = if (lang == "en") vocab.english else vocab.indonesian
-                    VocabularyItem(formatArabic(vocab.arabic), meaning, textSizeMultiplier)
-                }
-                if (module.vocabularies.size > 3) {
-                    OutlinedButton(
-                        onClick = { onPracticeClick(module) },
-                        modifier = Modifier.fillMaxWidth(),
-                        shape = RoundedCornerShape(12.dp),
-                        border = BorderStroke(1.dp, Color(0xFF166534))
-                    ) {
-                        Text(Localization.getString("see_all_vocab", lang).format(module.vocabularies.size), color = Color(0xFF166534))
-                    }
+            
+            LazyRow(
+                modifier = Modifier.fillMaxWidth(),
+                contentPadding = PaddingValues(vertical = 8.dp),
+                horizontalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                items(vocabList) { vocab ->
+                    VocabMiniCard(
+                        vocab = vocab,
+                        lang = lang,
+                        formatArabic = ::formatArabic,
+                        isSelected = false,
+                        onClick = { onPracticeClick(module) }
+                    )
                 }
             }
             
@@ -285,25 +294,4 @@ fun SectionHeader(title: String) {
             .fillMaxWidth()
             .padding(bottom = 12.dp)
     )
-}
-
-@Composable
-fun VocabularyItem(arabic: String, meaning: String, textSizeMultiplier: Float = 1.0f) {
-    Surface(
-        modifier = Modifier.fillMaxWidth(),
-        color = Color.White,
-        shape = RoundedCornerShape(12.dp),
-        shadowElevation = 1.dp
-    ) {
-        Row(
-            modifier = Modifier
-                .padding(16.dp)
-                .fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Text(text = meaning, fontSize = (14 * textSizeMultiplier).sp, color = Color.Gray, modifier = Modifier.weight(1f))
-            Text(text = arabic, fontSize = (18 * textSizeMultiplier).sp, fontWeight = FontWeight.Bold, color = GreenPrimary, textAlign = TextAlign.Right)
-        }
-    }
 }

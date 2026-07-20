@@ -1,7 +1,9 @@
 package com.fadhil.taba.ui.dashboard.chat_ai
 
+import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.fadhil.taba.BuildConfig
 import io.ktor.client.*
 import io.ktor.client.call.*
 import io.ktor.client.engine.okhttp.*
@@ -15,6 +17,7 @@ import kotlinx.coroutines.launch
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
 
+@Serializable
 data class ChatMessage(
     val text: String,
     val isUser: Boolean
@@ -22,11 +25,13 @@ data class ChatMessage(
 
 @Serializable
 data class GeminiRequest(
-    val contents: List<Content>
+    val contents: List<Content>,
+    val systemInstruction: Content? = null
 )
 
 @Serializable
 data class Content(
+    val role: String? = null,
     val parts: List<Part>
 )
 
@@ -37,17 +42,22 @@ data class Part(
 
 @Serializable
 data class GeminiResponse(
-    val candidates: List<Candidate>? = null
+    val candidates: List<Candidate>? = null,
+    val error: GeminiError? = null
 )
 
 @Serializable
 data class Candidate(
-    val content: Content? = null
+    val content: Content
+)
+
+@Serializable
+data class GeminiError(
+    val message: String
 )
 
 class ChatAiViewModel : ViewModel() {
-    // API Key Gemini. Sebaiknya diletakkan di BuildConfig/local.properties
-    private val apiKey = "YOUR_GEMINI_API_KEY" 
+    private val apiKey = BuildConfig.GEMINI_API_KEY_CHATBOT
     
     private val client = HttpClient(OkHttp) {
         install(ContentNegotiation) {
@@ -67,6 +77,8 @@ class ChatAiViewModel : ViewModel() {
     private val _isLoading = MutableStateFlow(false)
     val isLoading: StateFlow<Boolean> = _isLoading
 
+    private val systemInstructionText = "Berperanlah sebagai asisten cerdas TABA yang ahli dalam Bahasa Arab. Berikan jawaban yang ramah, edukatif, dan memotivasi user untuk belajar. Jika user bertanya hal di luar belajar bahasa, arahkan kembali dengan sopan. Jawaban harus ringkas dan mudah dipahami."
+
     fun sendMessage(userText: String) {
         if (userText.isBlank()) return
 
@@ -77,24 +89,34 @@ class ChatAiViewModel : ViewModel() {
         viewModelScope.launch {
             _isLoading.value = true
             try {
-                val url = "https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=$apiKey"
+                val url = "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=$apiKey"
                 
+                val requestBody = GeminiRequest(
+                    contents = listOf(
+                        Content(role = "user", parts = listOf(Part(text = userText)))
+                    ),
+                    systemInstruction = Content(parts = listOf(Part(text = systemInstructionText)))
+                )
+
                 val response: GeminiResponse = client.post(url) {
                     contentType(ContentType.Application.Json)
-                    setBody(GeminiRequest(
-                        contents = listOf(Content(parts = listOf(Part(text = userText))))
-                    ))
+                    setBody(requestBody)
                 }.body()
 
-                val aiResponse = response.candidates?.firstOrNull()?.content?.parts?.firstOrNull()?.text 
-                    ?: "Maaf, saya tidak mengerti."
+                if (response.error != null) {
+                    throw Exception(response.error.message)
+                }
+
+                val aiResponse = response.candidates?.firstOrNull()?.content?.parts?.firstOrNull()?.text
+                    ?: "Maaf, sistem AI tidak memberikan jawaban."
                 
                 val updatedMessages = _messages.value.toMutableList()
                 updatedMessages.add(ChatMessage(aiResponse, false))
                 _messages.value = updatedMessages
             } catch (e: Exception) {
+                Log.e("ChatAiViewModel", "Error sending message", e)
                 val updatedMessages = _messages.value.toMutableList()
-                updatedMessages.add(ChatMessage("Error: ${e.message}. Pastikan koneksi internet aktif.", false))
+                updatedMessages.add(ChatMessage("Terjadi kesalahan: ${e.localizedMessage}", false))
                 _messages.value = updatedMessages
             } finally {
                 _isLoading.value = false

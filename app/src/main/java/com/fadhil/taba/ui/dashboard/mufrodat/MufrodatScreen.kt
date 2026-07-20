@@ -624,11 +624,19 @@ fun MufrodatSettingsBottomSheet(
 }
 
 @Composable
-fun VocabMiniCard(vocab: ModuleVocabulary, lang: String, formatArabic: (String) -> String, isSelected: Boolean, onClick: () -> Unit) {
+fun VocabMiniCard(
+    vocab: ModuleVocabulary, 
+    lang: String, 
+    formatArabic: (String) -> String, 
+    isSelected: Boolean, 
+    onClick: () -> Unit,
+    onStarClick: (() -> Unit)? = null,
+    onVoiceClick: (() -> Unit)? = null
+) {
     Surface(
         modifier = Modifier
-            .width(160.dp)
-            .height(90.dp)
+            .width(165.dp)
+            .height(95.dp)
             .clickable { onClick() },
         color = Color.White,
         shape = RoundedCornerShape(16.dp),
@@ -639,36 +647,35 @@ fun VocabMiniCard(vocab: ModuleVocabulary, lang: String, formatArabic: (String) 
             modifier = Modifier.padding(8.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            // Bagian Kiri: Gambar dengan Background Lingkaran & Bintang "Terbang"
+            // Bagian Kiri: Gambar & Bintang "Terbang" di Kiri Atas
             Box(
                 modifier = Modifier.size(60.dp),
                 contentAlignment = Alignment.Center
             ) {
-                // Background Lingkaran Hijau Muda
-                Box(
-                    modifier = Modifier
-                        .size(54.dp)
-                        .background(Color(0xFFE6EFE9), CircleShape)
-                )
-                
-                // Gambar Kuda
+                // Gambar Kuda (Langsung pasang tanpa bulatan)
                 Image(
                     painter = painterResource(id = R.drawable.kuda),
                     contentDescription = null,
-                    modifier = Modifier.size(45.dp),
+                    modifier = Modifier.size(50.dp),
                     contentScale = ContentScale.Fit
                 )
                 
-                // Ikon Bintang "Terbang" di atas gambar
-                Icon(
-                    imageVector = if (vocab.isStarred) Icons.Default.Star else Icons.Default.StarBorder,
-                    contentDescription = null,
-                    tint = if (vocab.isStarred) Color(0xFFEAB308) else Color.Gray.copy(alpha = 0.5f),
+                // Ikon Bintang "Terbang" di KIRI ATAS gambar
+                IconButton(
+                    onClick = { onStarClick?.invoke() },
                     modifier = Modifier
-                        .size(16.dp)
-                        .align(Alignment.TopEnd)
-                        .offset(x = 4.dp, y = (-4).dp)
-                )
+                        .size(24.dp)
+                        .align(Alignment.TopStart)
+                        .offset(x = (-6).dp, y = (-6).dp),
+                    enabled = onStarClick != null
+                ) {
+                    Icon(
+                        imageVector = if (vocab.isStarred) Icons.Default.Star else Icons.Default.StarBorder,
+                        contentDescription = "Favorite",
+                        tint = if (vocab.isStarred) Color(0xFFEAB308) else Color.Gray.copy(alpha = 0.5f),
+                        modifier = Modifier.size(16.dp)
+                    )
+                }
             }
 
             Spacer(modifier = Modifier.width(8.dp))
@@ -692,20 +699,22 @@ fun VocabMiniCard(vocab: ModuleVocabulary, lang: String, formatArabic: (String) 
                     maxLines = 1
                 )
                 
-                // Ikon Suara di Lingkaran Kecil (seperti di gambar contoh)
+                // Ikon Suara di Lingkaran Kecil (Bisa di-klik langsung)
                 Box(
                     modifier = Modifier
                         .align(Alignment.End)
                         .padding(top = 4.dp)
-                        .size(24.dp)
-                        .background(Color(0xFFF9F7F2), CircleShape),
+                        .size(28.dp)
+                        .clip(CircleShape)
+                        .background(Color(0xFFF9F7F2))
+                        .clickable(enabled = onVoiceClick != null) { onVoiceClick?.invoke() },
                     contentAlignment = Alignment.Center
                 ) {
                     Icon(
                         imageVector = Icons.Default.VolumeUp,
-                        contentDescription = null,
+                        contentDescription = "Listen",
                         tint = GreenPrimary,
-                        modifier = Modifier.size(12.dp)
+                        modifier = Modifier.size(14.dp)
                     )
                 }
             }

@@ -29,10 +29,12 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.lifecycle.viewmodel.compose.viewModel
 import com.fadhil.taba.data.model.Module
 import com.fadhil.taba.ui.theme.GreenPrimary
 import com.fadhil.taba.data.settings.AppSettingsStore
 import com.fadhil.taba.data.settings.Localization
+import com.fadhil.taba.ui.dashboard.mufrodat.MufrodatViewModel
 import com.fadhil.taba.ui.dashboard.mufrodat.VocabMiniCard
 
 fun String.removeHarakat(): String {
@@ -45,7 +47,8 @@ fun String.removeHarakat(): String {
 fun DetailMateriScreen(
     module: Module, 
     onBack: () -> Unit,
-    onPracticeClick: (Module) -> Unit
+    onPracticeClick: (Module) -> Unit,
+    mufrodatViewModel: MufrodatViewModel = viewModel()
 ) {
     val context = LocalContext.current
     val activity = context as? Activity
@@ -118,7 +121,7 @@ fun DetailMateriScreen(
                 .fillMaxSize()
                 .padding(paddingValues)
                 .verticalScroll(rememberScrollState())
-                .padding(16.dp),
+                .padding(bottom = 16.dp),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
             // Sembunyikan gambar saat landscape agar teks lebih luas
@@ -128,12 +131,12 @@ fun DetailMateriScreen(
                     contentDescription = null,
                     modifier = Modifier
                         .fillMaxWidth()
-                        .height(200.dp)
+                        .height(180.dp)
                         .clip(RoundedCornerShape(16.dp)),
                     contentScale = ContentScale.Fit
                 )
                 
-                Spacer(modifier = Modifier.height(24.dp))
+                Spacer(modifier = Modifier.height(16.dp))
             }
             
             Text(
@@ -141,13 +144,14 @@ fun DetailMateriScreen(
                 fontSize = (28 * textSizeMultiplier).sp,
                 fontWeight = FontWeight.Bold,
                 color = GreenPrimary,
-                textAlign = TextAlign.Center
+                textAlign = TextAlign.Center,
+                modifier = Modifier.padding(horizontal = 16.dp)
             )
             
-            Spacer(modifier = Modifier.height(16.dp))
-            
+            Spacer(modifier = Modifier.height(12.dp))
+
             Surface(
-                modifier = Modifier.fillMaxWidth(),
+                modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp),
                 color = Color.White,
                 shape = RoundedCornerShape(16.dp),
                 shadowElevation = 1.dp
@@ -162,22 +166,25 @@ fun DetailMateriScreen(
                 )
             }
             
-            Spacer(modifier = Modifier.height(24.dp))
+            Spacer(modifier = Modifier.height(16.dp))
             
             Row(
-                modifier = Modifier.fillMaxWidth(),
+                modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp),
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                SectionHeader(Localization.getString("vocabulary", lang))
-                TextButton(onClick = { onPracticeClick(module) }) {
+                SectionHeader(Localization.getString("vocabulary", lang), modifier = Modifier.weight(1f))
+                TextButton(
+                    onClick = { onPracticeClick(module) },
+                    contentPadding = PaddingValues(0.dp)
+                ) {
                     Text(Localization.getString("practice_now", lang), color = Color(0xFF166534), fontWeight = FontWeight.Bold)
                 }
             }
             
             LazyRow(
                 modifier = Modifier.fillMaxWidth(),
-                contentPadding = PaddingValues(vertical = 8.dp),
+                contentPadding = PaddingValues(horizontal = 16.dp, vertical = 4.dp),
                 horizontalArrangement = Arrangement.spacedBy(12.dp)
             ) {
                 items(vocabList) { vocab ->
@@ -186,16 +193,25 @@ fun DetailMateriScreen(
                         lang = lang,
                         formatArabic = ::formatArabic,
                         isSelected = false,
-                        onClick = { onPracticeClick(module) }
+                        onClick = { onPracticeClick(module) },
+                        onStarClick = {
+                            AppSettingsStore.toggleStar(context, module.id, vocab.arabic)
+                        },
+                        onVoiceClick = {
+                            mufrodatViewModel.playVoice(vocab.arabic)
+                        }
                     )
                 }
             }
             
-            Spacer(modifier = Modifier.height(24.dp))
+            Spacer(modifier = Modifier.height(16.dp))
             
-            SectionHeader(Localization.getString("questions", lang))
+            SectionHeader(
+                title = Localization.getString("questions", lang), 
+                modifier = Modifier.padding(horizontal = 16.dp)
+            )
             Surface(
-                modifier = Modifier.fillMaxWidth(),
+                modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp),
                 color = Color.White,
                 shape = RoundedCornerShape(16.dp),
                 shadowElevation = 1.dp
@@ -284,13 +300,13 @@ fun DetailMateriScreen(
 }
 
 @Composable
-fun SectionHeader(title: String) {
+fun SectionHeader(title: String, modifier: Modifier = Modifier) {
     Text(
         text = title,
         fontSize = 18.sp,
         fontWeight = FontWeight.Bold,
         color = GreenPrimary,
-        modifier = Modifier
+        modifier = modifier
             .fillMaxWidth()
             .padding(bottom = 12.dp)
     )

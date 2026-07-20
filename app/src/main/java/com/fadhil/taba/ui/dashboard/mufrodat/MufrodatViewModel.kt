@@ -75,7 +75,6 @@ class MufrodatViewModel(application: Application) : AndroidViewModel(application
             val voices = tts?.voices
             val locale = Locale("ar")
             if (voices != null) {
-                // Filter suara bahasa Arab
                 val arabicVoices = voices.filter { it.locale.language == locale.language }
                 
                 val targetVoice = arabicVoices.find { voice ->
@@ -83,7 +82,6 @@ class MufrodatViewModel(application: Application) : AndroidViewModel(application
                     (gender == "male" && (name.contains("male") || name.contains("man") || name.contains("boy"))) ||
                     (gender == "female" && (name.contains("female") || name.contains("woman") || name.contains("girl")))
                 } ?: arabicVoices.find { voice ->
-                    // Heuristik tambahan: Jika male dipilih dan ada suara selain yang pertama, coba pilih itu
                     gender == "male" && arabicVoices.size > 1 && voice != arabicVoices.first()
                 } ?: arabicVoices.firstOrNull()
                 
@@ -134,8 +132,8 @@ class MufrodatViewModel(application: Application) : AndroidViewModel(application
                     Hasil suara user: "$userSpeech".
                     
                     Tugas:
-                    1. Skor (0-100): Berikan skor yang ADIL dan CENDERUNG TOLERAN. Jika pengucapan mirip atau intinya benar, berikan skor 85-100. Jangan terlalu pelit nilai.
-                    2. Feedback: Berikan 1 kalimat apresiasi atau koreksi ringan dalam Bahasa Indonesia. 
+                    1. Skor (0-100): Berikan skor yang ADIL dan haqiqi nya, jangan terlalu baik dan jangan terlalu jahat dalam menilai dengan memerhatikan harakat dari mufrodatnya juga. seperti user mengucap harakat fathah tapi sebenarnya harakatnya kasroh, maka harus dipertimbangkan dan dikasih tau juga
+                    2. Feedback: Berikan feedback berupa  kalimat apresiasi atau koreksi ringan dalam Bahasa Indonesia. 
                     3. Tips: Berikan 1 tips sangat singkat (maksimal 7 kata) untuk makhrajnya.
                     
                     CONTOH:

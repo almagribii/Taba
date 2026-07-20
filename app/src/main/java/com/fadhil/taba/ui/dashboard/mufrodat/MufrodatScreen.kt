@@ -151,8 +151,9 @@ fun MufrodatHeader(
             ) {
                 Icon(Icons.Default.MenuBook, contentDescription = null, tint = GreenPrimary, modifier = Modifier.size(16.dp))
                 Spacer(modifier = Modifier.width(8.dp))
+                val moduleTitle = if (lang == "en") module.titleEn else module.title
                 Text(
-                    text = "$materialsLabel: ${module.arabicTitle} / Di ${module.title}",
+                    text = "$materialsLabel: ${module.arabicTitle} / ${if (lang == "en") "In" else "Di"} $moduleTitle",
                     fontSize = 12.sp,
                     color = Color.Gray
                 )
@@ -194,7 +195,7 @@ fun MufrodatPracticeCard(
                         Icon(Icons.Default.StarBorder, contentDescription = null, tint = Color.Gray)
                     }
                     Text(text = vocab.arabic, fontSize = 36.sp, fontWeight = FontWeight.Bold, color = GreenPrimary)
-                    Text(text = vocab.indonesian, fontSize = 18.sp, color = Color.Gray)
+                    Text(text = if (lang == "en") vocab.english else vocab.indonesian, fontSize = 18.sp, color = Color.Gray)
                 }
             }
 
@@ -290,8 +291,8 @@ fun AIFeedbackSection(lang: String) {
                         Text(text = Localization.getString("ai_feedback", lang), fontSize = 12.sp, fontWeight = FontWeight.Bold, color = Color(0xFF166534))
                     }
                     Spacer(modifier = Modifier.height(8.dp))
-                    Text(text = "${Localization.getString("pronunciation", lang)} 88% - Baik", fontSize = 14.sp, fontWeight = FontWeight.Medium, color = GreenPrimary)
-                    Text(text = "Perjelas bunyi huruf رَ", fontSize = 12.sp, color = Color.Gray)
+                    Text(text = "${Localization.getString("pronunciation", lang)} 88% - ${if (lang == "en") "Good" else "Baik"}", fontSize = 14.sp, fontWeight = FontWeight.Medium, color = GreenPrimary)
+                    Text(text = if (lang == "en") "Clarify the sound of letter رَ" else "Perjelas bunyi huruf رَ", fontSize = 12.sp, color = Color.Gray)
                     
                     Spacer(modifier = Modifier.height(8.dp))
                     Row(verticalAlignment = Alignment.CenterVertically) {
@@ -331,7 +332,8 @@ fun OtherVocabSection(
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically
         ) {
-            Text(text = headingTemplate.format(module.arabicTitle), fontSize = 14.sp, fontWeight = FontWeight.Bold, color = GreenPrimary)
+            val moduleTitle = if (lang == "en") module.arabicTitle else module.arabicTitle // Arabic title stays the same
+            Text(text = headingTemplate.format(moduleTitle), fontSize = 14.sp, fontWeight = FontWeight.Bold, color = GreenPrimary)
             Text(text = Localization.getString("see_all", lang), fontSize = 12.sp, color = Color.Gray, modifier = Modifier.clickable { })
         }
         
@@ -345,6 +347,7 @@ fun OtherVocabSection(
                 val vocab = module.vocabularies[index]
                 VocabMiniCard(
                     vocab = vocab,
+                    lang = lang,
                     isSelected = index == currentVocabIndex,
                     onClick = { onVocabClick(index) }
                 )
@@ -354,7 +357,7 @@ fun OtherVocabSection(
 }
 
 @Composable
-fun VocabMiniCard(vocab: ModuleVocabulary, isSelected: Boolean, onClick: () -> Unit) {
+fun VocabMiniCard(vocab: ModuleVocabulary, lang: String, isSelected: Boolean, onClick: () -> Unit) {
     Surface(
         modifier = Modifier.size(width = 110.dp, height = 140.dp).clickable { onClick() },
         color = Color.White,
@@ -374,7 +377,7 @@ fun VocabMiniCard(vocab: ModuleVocabulary, isSelected: Boolean, onClick: () -> U
                 modifier = Modifier.size(60.dp).clip(RoundedCornerShape(8.dp)),
                 contentScale = ContentScale.Crop
             )
-            Text(text = vocab.indonesian, fontSize = 11.sp, color = Color.Gray)
+            Text(text = if (lang == "en") vocab.english else vocab.indonesian, fontSize = 11.sp, color = Color.Gray)
         }
     }
 }

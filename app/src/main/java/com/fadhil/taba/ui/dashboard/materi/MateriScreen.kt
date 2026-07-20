@@ -54,6 +54,7 @@ fun MateriScreen(
             val query = searchQuery.trim().lowercase()
             ModuleData.modules.filter { module ->
                 module.title.lowercase().contains(query) ||
+                    module.titleEn.lowercase().contains(query) ||
                     module.arabicTitle.lowercase().contains(query)
             }
         }
@@ -263,8 +264,9 @@ fun ModuleCardNew(module: Module, lang: String, onClick: () -> Unit) {
                         maxLines = 1,
                         textAlign = androidx.compose.ui.text.style.TextAlign.Center
                     )
+                    val moduleTitle = if (lang == "en") module.titleEn else module.title
                     Text(
-                        text = "Di ${module.title}",
+                        text = "${if (lang == "en") "In" else "Di"} $moduleTitle",
                         fontSize = 11.sp,
                         color = Color.Gray,
                         maxLines = 1,

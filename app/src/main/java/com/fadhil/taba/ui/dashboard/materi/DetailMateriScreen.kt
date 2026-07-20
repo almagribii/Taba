@@ -82,7 +82,10 @@ fun DetailMateriScreen(
         containerColor = Color(0xFFF9F7F2),
         topBar = {
             TopAppBar(
-                title = { Text(module.title, fontWeight = FontWeight.Bold) },
+                title = { 
+                    val moduleTitle = if (lang == "en") module.titleEn else module.title
+                    Text(moduleTitle, fontWeight = FontWeight.Bold) 
+                },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = Localization.getString("back", lang))
@@ -162,7 +165,8 @@ fun DetailMateriScreen(
             }
             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 module.vocabularies.take(3).forEach { vocab ->
-                    VocabularyItem(formatArabic(vocab.arabic), vocab.indonesian, textSizeMultiplier)
+                    val meaning = if (lang == "en") vocab.english else vocab.indonesian
+                    VocabularyItem(formatArabic(vocab.arabic), meaning, textSizeMultiplier)
                 }
                 if (module.vocabularies.size > 3) {
                     OutlinedButton(
@@ -282,7 +286,7 @@ fun SectionHeader(title: String) {
 }
 
 @Composable
-fun VocabularyItem(arabic: String, indonesian: String, textSizeMultiplier: Float = 1.0f) {
+fun VocabularyItem(arabic: String, meaning: String, textSizeMultiplier: Float = 1.0f) {
     Surface(
         modifier = Modifier.fillMaxWidth(),
         color = Color.White,
@@ -296,7 +300,7 @@ fun VocabularyItem(arabic: String, indonesian: String, textSizeMultiplier: Float
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically
         ) {
-            Text(text = indonesian, fontSize = (14 * textSizeMultiplier).sp, color = Color.Gray, modifier = Modifier.weight(1f))
+            Text(text = meaning, fontSize = (14 * textSizeMultiplier).sp, color = Color.Gray, modifier = Modifier.weight(1f))
             Text(text = arabic, fontSize = (18 * textSizeMultiplier).sp, fontWeight = FontWeight.Bold, color = GreenPrimary, textAlign = TextAlign.Right)
         }
     }

@@ -12,6 +12,8 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ChevronRight
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -25,6 +27,7 @@ import com.fadhil.taba.R
 import com.fadhil.taba.data.local.ModuleData
 import com.fadhil.taba.data.model.Module
 import com.fadhil.taba.ui.theme.GreenPrimary
+import com.fadhil.taba.data.settings.AppSettingsStore
 
 @Composable
 fun HomeScreen(
@@ -34,6 +37,9 @@ fun HomeScreen(
     sectionTitle: String = "Daftar Materi",
     sectionActionText: String = "Lihat Semua >"
 ) {
+    val settings by AppSettingsStore.settings.collectAsState()
+    val lang = settings.language
+
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -78,14 +84,14 @@ fun HomeScreen(
         Spacer(modifier = Modifier.height(4.dp))
 
         ModuleData.modules.take(6).forEach { module ->
-            HomeModuleCard(module = module, onClick = { onModuleClick(module) })
+            HomeModuleCard(module = module, lang = lang, onClick = { onModuleClick(module) })
             Spacer(modifier = Modifier.height(4.dp))
         }
     }
 }
 
 @Composable
-fun HomeModuleCard(module: Module, onClick: () -> Unit) {
+fun HomeModuleCard(module: Module, lang: String, onClick: () -> Unit) {
     Surface(
         modifier = Modifier
             .fillMaxWidth()
@@ -127,7 +133,7 @@ fun HomeModuleCard(module: Module, onClick: () -> Unit) {
                     color = GreenPrimary
                 )
                 Text(
-                    text = "Di ${module.title}",
+                    text = if (lang == "en") "In ${module.titleEn}" else "Di ${module.title}",
                     fontSize = 13.sp,
                     color = Color.Gray
                 )

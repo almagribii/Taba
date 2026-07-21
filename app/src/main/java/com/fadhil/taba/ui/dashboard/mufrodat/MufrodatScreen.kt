@@ -57,6 +57,7 @@ fun MufrodatScreen(
     
     val aiFeedback by viewModel.aiFeedback.collectAsState()
     val isAiLoading by viewModel.isLoading.collectAsState()
+    val currentlyPlaying by viewModel.currentlyPlayingText.collectAsState()
     
     val module = initialModule ?: ModuleData.modules[0]
     
@@ -121,7 +122,7 @@ fun MufrodatScreen(
     Scaffold(
         topBar = {
             MufrodatHeader(
-                module = module,
+                title = if (lang == "en") "Vocabulary" else "Kosa Kata",
                 onBack = onBack,
                 lang = lang,
                 onSettingsClick = { showSettingsSheet = true }
@@ -178,10 +179,13 @@ fun MufrodatScreen(
                 onNext = {
                     if (currentVocabIndex < vocabList.size - 1) {
                         currentVocabIndex++
+                        viewModel.resetFeedback()
                     } else {
                         currentVocabIndex = 0
+                        viewModel.resetFeedback()
                     }
-                }
+                },
+                isPlaying = currentlyPlaying == currentVocab.arabic
             )
             Spacer(modifier = Modifier.height(24.dp))
             
@@ -203,7 +207,13 @@ fun MufrodatScreen(
                 headingTemplate = settings.otherVocabHeadingTemplate,
                 lang = lang,
                 formatArabic = ::formatArabic,
-                onVocabClick = { index -> currentVocabIndex = index }
+                onVocabClick = { index -> 
+                    currentVocabIndex = index 
+                    viewModel.resetFeedback()
+                },
+                currentlyPlayingText = currentlyPlaying,
+                onVoiceClick = { viewModel.playVoice(it) },
+                onStarClick = { AppSettingsStore.toggleStar(context, module.id, it) }
             )
             
             if (showSettingsSheet) {
@@ -227,15 +237,14 @@ fun MufrodatScreen(
 @Composable
 @OptIn(ExperimentalMaterial3Api::class)
 fun MufrodatHeader(
-    module: Module,
+    title: String,
     onBack: () -> Unit,
     lang: String,
     onSettingsClick: () -> Unit
 ) {
     TopAppBar(
         title = {
-            val headerTitle = if (lang == "en") "Vocabulary" else "Kosa Kata"
-            Text(headerTitle, fontWeight = FontWeight.Bold)
+            Text(title, fontWeight = FontWeight.Bold)
         },
         navigationIcon = {
             IconButton(onClick = onBack) {
@@ -264,7 +273,8 @@ fun MufrodatPracticeCard(
     onListenClick: () -> Unit,
     onSpeakClick: () -> Unit,
     onStarClick: () -> Unit,
-    onNext: () -> Unit
+    onNext: () -> Unit,
+    isPlaying: Boolean = false
 ) {
     Surface(
         modifier = Modifier.padding(horizontal = 16.dp).fillMaxWidth(),
@@ -308,14 +318,14 @@ fun MufrodatPracticeCard(
                 Button(
                     onClick = onListenClick,
                     modifier = Modifier.weight(1f).height(48.dp),
-                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFF0F2EE)),
+                    colors = ButtonDefaults.buttonColors(containerColor = if (isPlaying) GreenPrimary.copy(alpha = 0.1f) else Color(0xFFF0F2EE)),
                     shape = RoundedCornerShape(12.dp),
                     contentPadding = PaddingValues(horizontal = 4.dp)
                 ) {
-                    Icon(Icons.Default.VolumeUp, contentDescription = null, tint = GreenPrimary, modifier = Modifier.size(18.dp))
+                    Icon(if (isPlaying) Icons.Default.Stop else Icons.Default.VolumeUp, contentDescription = null, tint = GreenPrimary, modifier = Modifier.size(18.dp))
                     Spacer(modifier = Modifier.width(4.dp))
                     Text(
-                        text = Localization.getString("listen", lang),
+                        text = if (isPlaying) "Stop" else Localization.getString("listen", lang),
                         color = GreenPrimary,
                         fontSize = 11.sp,
                         maxLines = 1
@@ -411,7 +421,7 @@ fun AIFeedbackSection(lang: String, data: AIFeedbackData) {
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         Icon(Icons.Default.SmartToy, contentDescription = null, tint = Color(0xFF166534), modifier = Modifier.size(18.dp))
                         Spacer(modifier = Modifier.width(8.dp))
-                        Text(text = "Umpan Balik AI", fontSize = 12.sp, fontWeight = FontWeight.Bold, color = Color(0xFF166534))
+                        Text(text = Localization.getString("ai_feedback", lang), fontSize = 12.sp, fontWeight = FontWeight.Bold, color = Color(0xFF166534))
                     }
                     Spacer(modifier = Modifier.height(8.dp))
                     
@@ -463,7 +473,10 @@ fun OtherVocabSection(
     headingTemplate: String,
     lang: String,
     formatArabic: (String) -> String,
-    onVocabClick: (Int) -> Unit
+    onVocabClick: (Int) -> Unit,
+    currentlyPlayingText: String? = null,
+    onVoiceClick: ((String) -> Unit)? = null,
+    onStarClick: ((String) -> Unit)? = null
 ) {
     Column(modifier = Modifier.fillMaxWidth()) {
         Row(
@@ -488,7 +501,10 @@ fun OtherVocabSection(
                     lang = lang,
                     formatArabic = formatArabic,
                     isSelected = index == currentVocabIndex,
-                    onClick = { onVocabClick(index) }
+                    onClick = { onVocabClick(index) },
+                    isPlaying = currentlyPlayingText == vocab.arabic,
+                    onVoiceClick = { onVoiceClick?.invoke(vocab.arabic) },
+                    onStarClick = { onStarClick?.invoke(vocab.arabic) }
                 )
             }
         }
@@ -631,7 +647,8 @@ fun VocabMiniCard(
     isSelected: Boolean, 
     onClick: () -> Unit,
     onStarClick: (() -> Unit)? = null,
-    onVoiceClick: (() -> Unit)? = null
+    onVoiceClick: (() -> Unit)? = null,
+    isPlaying: Boolean = false
 ) {
     Surface(
         modifier = Modifier
@@ -699,20 +716,19 @@ fun VocabMiniCard(
                     maxLines = 1
                 )
                 
-                // Ikon Suara di Lingkaran Kecil (Bisa di-klik langsung)
                 Box(
                     modifier = Modifier
                         .align(Alignment.End)
                         .padding(top = 4.dp)
                         .size(28.dp)
                         .clip(CircleShape)
-                        .background(Color(0xFFF9F7F2))
+                        .background(if (isPlaying) GreenPrimary.copy(alpha = 0.1f) else Color(0xFFF9F7F2))
                         .clickable(enabled = onVoiceClick != null) { onVoiceClick?.invoke() },
                     contentAlignment = Alignment.Center
                 ) {
                     Icon(
-                        imageVector = Icons.Default.VolumeUp,
-                        contentDescription = "Listen",
+                        imageVector = if (isPlaying) Icons.Default.Stop else Icons.Default.VolumeUp,
+                        contentDescription = if (isPlaying) "Stop" else "Listen",
                         tint = GreenPrimary,
                         modifier = Modifier.size(14.dp)
                     )

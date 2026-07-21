@@ -12,6 +12,8 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.filled.Chat
+import androidx.compose.material.icons.filled.ChevronRight
 import androidx.compose.material.icons.filled.FormatSize
 import androidx.compose.material.icons.filled.ScreenRotation
 import androidx.compose.material.icons.filled.Settings
@@ -48,6 +50,7 @@ fun DetailMateriScreen(
     module: Module, 
     onBack: () -> Unit,
     onPracticeClick: (Module) -> Unit,
+    onHiwarClick: (Module) -> Unit,
     mufrodatViewModel: MufrodatViewModel = viewModel()
 ) {
     val context = LocalContext.current
@@ -167,6 +170,30 @@ fun DetailMateriScreen(
             }
             
             Spacer(modifier = Modifier.height(16.dp))
+
+            Surface(
+                modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp),
+                color = Color(0xFFF0FDF4),
+                shape = RoundedCornerShape(16.dp),
+                border = BorderStroke(1.dp, Color(0xFFDCFCE7)),
+                onClick = { onHiwarClick(module) }
+            ) {
+                Row(
+                    modifier = Modifier.padding(16.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Icon(Icons.AutoMirrored.Filled.Chat, contentDescription = null, tint = Color(0xFF166534))
+                    Spacer(modifier = Modifier.width(12.dp))
+                    Column {
+                        Text("Al-Hiwar (Latihan Percakapan)", fontWeight = FontWeight.Bold, color = Color(0xFF166534), fontSize = 14.sp)
+                        Text("Bicara interaktif dengan bantuan AI", color = Color(0xFF166534).copy(alpha = 0.7f), fontSize = 11.sp)
+                    }
+                    Spacer(modifier = Modifier.weight(1f))
+                    Icon(Icons.Default.ChevronRight, contentDescription = null, tint = Color(0xFF166534))
+                }
+            }
+
+            Spacer(modifier = Modifier.height(16.dp))
             
             Row(
                 modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp),
@@ -218,15 +245,26 @@ fun DetailMateriScreen(
             ) {
                 Column(modifier = Modifier.padding(16.dp)) {
                     module.questions.forEachIndexed { index, question ->
-                        Text(
-                            text = formatArabic(question),
-                            fontSize = (18 * textSizeMultiplier).sp,
-                            lineHeight = (30 * textSizeMultiplier).sp,
+                        Column(
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .padding(vertical = 4.dp),
-                            textAlign = TextAlign.Right
-                        )
+                                .padding(vertical = 8.dp)
+                        ) {
+                            Text(
+                                text = formatArabic(question.arabic),
+                                fontSize = (18 * textSizeMultiplier).sp,
+                                lineHeight = (30 * textSizeMultiplier).sp,
+                                modifier = Modifier.fillMaxWidth(),
+                                textAlign = TextAlign.Right
+                            )
+                            Text(
+                                text = if (lang == "en") question.english else question.indonesian,
+                                fontSize = (14 * textSizeMultiplier).sp,
+                                color = Color.Gray,
+                                modifier = Modifier.fillMaxWidth(),
+                                textAlign = TextAlign.Left
+                            )
+                        }
                         if (index < module.questions.size - 1) {
                             HorizontalDivider(color = Color(0xFFF3F4F6), thickness = 1.dp)
                         }

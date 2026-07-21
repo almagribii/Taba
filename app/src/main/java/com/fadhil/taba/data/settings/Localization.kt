@@ -57,7 +57,13 @@ object Localization {
         "sign_in_google" to "Masuk dengan Google",
         "login_failed" to "Gagal masuk",
         "no_materi_found" to "Materi tidak ditemukan",
-        "exercises_completed" to "%d/5 latihan selesai"
+        "exercises_completed" to "%d/5 latihan selesai",
+        "hiwar_practice" to "Latihan Percakapan",
+        "hiwar_headline" to "Berlatih dengan AI untuk meningkatkan kemampuan berbicara.",
+        "conversation" to "Percakapan",
+        "answer_voice" to "Jawab dengan Voice Note",
+        "previous" to "Sebelumnya",
+        "current_topic" to "Topik Saat Ini"
     )
 
     private val enStrings = mapOf(
@@ -109,6 +115,12 @@ object Localization {
         "sign_in_google" to "Sign in with Google",
         "login_failed" to "Login failed",
         "no_materi_found" to "Material not found",
-        "exercises_completed" to "%d/5 exercises completed"
+        "exercises_completed" to "%d/5 exercises completed",
+        "hiwar_practice" to "Conversation Practice",
+        "hiwar_headline" to "Practice with AI to improve your speaking skills.",
+        "conversation" to "Conversation",
+        "answer_voice" to "Answer with Voice Note",
+        "previous" to "Previous",
+        "current_topic" to "Current Topic"
     )
 }

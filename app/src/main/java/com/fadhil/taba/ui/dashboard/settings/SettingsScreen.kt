@@ -220,7 +220,6 @@ fun SettingsScreen(
                         Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(horizontal = 6.dp, vertical = 1.dp)) {
                             Icon(Icons.Default.Star, contentDescription = null, tint = Color(0xFF166534), modifier = Modifier.size(10.dp))
                             Spacer(modifier = Modifier.width(2.dp))
-                            Text(text = "${Localization.getString("level", lang)} 12", color = Color(0xFF166534), fontSize = 10.sp, fontWeight = FontWeight.Bold)
                         }
                     }
                 }

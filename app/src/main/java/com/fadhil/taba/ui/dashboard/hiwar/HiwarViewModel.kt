@@ -1,4 +1,4 @@
-package com.fadhil.taba.ui.dashboard.mufrodat
+package com.fadhil.taba.ui.dashboard.hiwar
 
 import android.app.Application
 import android.speech.tts.TextToSpeech
@@ -6,6 +6,7 @@ import android.util.Log
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.fadhil.taba.BuildConfig
+import com.fadhil.taba.ui.dashboard.mufrodat.AIFeedbackData
 import io.ktor.client.*
 import io.ktor.client.engine.okhttp.*
 import io.ktor.client.plugins.*
@@ -17,18 +18,10 @@ import io.ktor.serialization.kotlinx.json.*
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
-import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.*
 import java.util.Locale
 
-@Serializable
-data class AIFeedbackData(
-    val score: Int,
-    val feedback: String,
-    val tips: String
-)
-
-class MufrodatViewModel(application: Application) : AndroidViewModel(application), TextToSpeech.OnInitListener {
+class HiwarViewModel(application: Application) : AndroidViewModel(application), TextToSpeech.OnInitListener {
     private val apiKey = BuildConfig.GEMINI_API_KEY_HIWAR
     
     private val client = HttpClient(OkHttp) {
@@ -65,42 +58,6 @@ class MufrodatViewModel(application: Application) : AndroidViewModel(application
         tts = TextToSpeech(application, this)
     }
 
-    fun updateTtsSettings(speed: Float, gender: String) {
-        _audioSpeed = speed
-        _voiceGender = gender
-        if (_isTtsReady.value) {
-            tts?.setSpeechRate(speed)
-            applyVoiceGender(gender)
-        }
-    }
-
-    private fun applyVoiceGender(gender: String) {
-        try {
-            val voices = tts?.voices
-            val locale = Locale("ar")
-            if (voices != null) {
-                val arabicVoices = voices.filter { it.locale.language == locale.language }
-                
-                val targetVoice = arabicVoices.find { voice ->
-                    val name = voice.name.lowercase()
-                    (gender == "male" && (name.contains("male") || name.contains("man") || name.contains("boy"))) ||
-                    (gender == "female" && (name.contains("female") || name.contains("woman") || name.contains("girl")))
-                } ?: arabicVoices.find { voice ->
-                    gender == "male" && arabicVoices.size > 1 && voice != arabicVoices.first()
-                } ?: arabicVoices.firstOrNull()
-                
-                if (targetVoice != null) {
-                    Log.d("TTS", "Setting voice to: ${targetVoice.name} for gender: $gender")
-                    tts?.voice = targetVoice
-                } else {
-                    Log.e("TTS", "No Arabic voice found at all")
-                }
-            }
-        } catch (e: Exception) {
-            Log.e("TTS", "Error setting voice gender", e)
-        }
-    }
-
     override fun onInit(status: Int) {
         if (status == TextToSpeech.SUCCESS) {
             val result = tts?.setLanguage(Locale("ar"))
@@ -110,7 +67,7 @@ class MufrodatViewModel(application: Application) : AndroidViewModel(application
                 _isTtsReady.value = true
                 tts?.setSpeechRate(_audioSpeed)
                 applyVoiceGender(_voiceGender)
-                
+
                 tts?.setOnUtteranceProgressListener(object : android.speech.tts.UtteranceProgressListener() {
                     override fun onStart(utteranceId: String?) {
                         _currentlyPlayingText.value = utteranceId
@@ -145,32 +102,57 @@ class MufrodatViewModel(application: Application) : AndroidViewModel(application
         }
     }
 
-    fun checkPronunciation(arabicWord: String, userSpeech: String) {
-        if (userSpeech.isBlank()) {
-            Log.e("MufrodatViewModel", "User speech is blank")
-            return
+    fun updateTtsSettings(speed: Float, gender: String) {
+        _audioSpeed = speed
+        _voiceGender = gender
+        if (_isTtsReady.value) {
+            tts?.setSpeechRate(speed)
+            applyVoiceGender(gender)
         }
+    }
+
+    private fun applyVoiceGender(gender: String) {
+        try {
+            val voices = tts?.voices
+            val locale = Locale("ar")
+            if (voices != null) {
+                val arabicVoices = voices.filter { it.locale.language == locale.language }
+                val targetVoice = arabicVoices.find { voice ->
+                    val name = voice.name.lowercase()
+                    (gender == "male" && (name.contains("male") || name.contains("man") || name.contains("boy"))) ||
+                    (gender == "female" && (name.contains("female") || name.contains("woman") || name.contains("girl")))
+                } ?: arabicVoices.find { voice ->
+                    gender == "male" && arabicVoices.size > 1 && voice != arabicVoices.first()
+                } ?: arabicVoices.firstOrNull()
+                
+                if (targetVoice != null) {
+                    tts?.voice = targetVoice
+                }
+            }
+        } catch (e: Exception) {
+            Log.e("TTS", "Error setting voice gender", e)
+        }
+    }
+
+    fun checkHiwarResponse(question: String, userSpeech: String, moduleTitle: String, moduleContent: String) {
+        if (userSpeech.isBlank()) return
         
         viewModelScope.launch {
             _isLoading.value = true
-            _aiFeedback.value = null // Reset feedback sebelumnya
+            _aiFeedback.value = null
             try {
-                // Prompt yang lebih cerdas untuk koreksi
                 val prompt = """
-                    Berperanlah sebagai guru Bahasa Arab. User mencoba mengucapkan: "$arabicWord".
-                    Hasil suara user: "$userSpeech".
+                    Berperanlah sebagai guru Bahasa Arab yang interaktif. 
+                    Topik Materi: "$moduleTitle"
+                    Isi Materi: "$moduleContent"
+                    
+                    User sedang berlatih percakapan (Al-Hiwar) dan merespons pertanyaan: "$question".
+                    Jawaban user (dari Speech-to-Text): "$userSpeech".
                     
                     Tugas:
-                    1. Skor (0-100): Berikan skor yang ADIL dan haqiqi nya, jangan terlalu baik dan jangan terlalu jahat dalam menilai dengan memerhatikan harakat dari mufrodatnya juga. seperti user mengucap harakat fathah tapi sebenarnya harakatnya kasroh, maka harus dipertimbangkan dan dikasih tau juga
-                    2. Feedback: Berikan feedback berupa  kalimat apresiasi atau koreksi ringan dalam Bahasa Indonesia. 
-                    3. Tips: Berikan 1 tips sangat singkat (maksimal 7 kata) untuk makhrajnya.
-                    
-                    CONTOH:
-                    {
-                      "score": 95,
-                      "feedback": "M ممتاز! Pengucapan Anda sudah sangat jelas dan tepat.",
-                      "tips": "Pertahankan makhraj huruf tersebut."
-                    }
+                    1. Skor (0-100): Berikan skor kemiripan bunyi dan ketepatan konteks jawaban sesuai dengan topik "$moduleTitle". Berikan nilai yang cenderung toleran (80-100 jika benar secara konteks).
+                    2. Feedback: Berikan 1 kalimat apresiasi atau koreksi ringan dalam Bahasa Indonesia yang relevan dengan topik.
+                    3. Tips: Berikan 1 tips sangat singkat (maksimal 10 kata) untuk memperbaiki makhraj atau pilihan kata agar lebih sesuai dengan konteks "$moduleTitle".
                     
                     FORMAT JSON (MURNI):
                     {
@@ -181,23 +163,17 @@ class MufrodatViewModel(application: Application) : AndroidViewModel(application
                 """.trimIndent()
 
                 val url = "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=$apiKey"
-
-                val requestBody = mapOf(
-                    "contents" to listOf(mapOf(
-                        "parts" to listOf(mapOf(
-                            "text" to prompt
-                        ))
-                    ))
-                )
-
                 val response = client.post(url) {
                     contentType(ContentType.Application.Json)
-                    setBody(requestBody)
+                    setBody(mapOf(
+                        "contents" to listOf(mapOf(
+                            "parts" to listOf(mapOf("text" to prompt))
+                        ))
+                    ))
                 }
                 
                 val responseStatus = response.status
                 val responseText = response.bodyAsText()
-                Log.d("MufrodatViewModel", "AI Raw Response: ${responseText.take(200)}...")
 
                 if (responseStatus == HttpStatusCode.TooManyRequests) {
                     _aiFeedback.value = AIFeedbackData(0, "Terlalu banyak permintaan (Limit tercapai).", "Mohon tunggu sebentar lalu coba lagi.")
@@ -209,11 +185,8 @@ class MufrodatViewModel(application: Application) : AndroidViewModel(application
                     return@launch
                 }
 
-                // Perbaikan Parsing: Gemini mengembalikan objek dengan key 'candidates'
                 val responseJson = Json { ignoreUnknownKeys = true }
                 val geminiRawElement = responseJson.parseToJsonElement(responseText)
-                
-                // Ambil teks dari struktur JSON Gemini secara manual
                 val aiTextResponse = geminiRawElement.jsonObject["candidates"]
                     ?.jsonArray?.getOrNull(0)
                     ?.jsonObject?.get("content")
@@ -222,21 +195,17 @@ class MufrodatViewModel(application: Application) : AndroidViewModel(application
                     ?.jsonObject?.get("text")
                     ?.jsonPrimitive?.content ?: ""
 
-                // Extract JSON murni dari teks tersebut
                 val jsonRegex = Regex("""\{.*\}""", RegexOption.DOT_MATCHES_ALL)
                 val jsonMatch = jsonRegex.find(aiTextResponse)?.value
                 
                 if (jsonMatch != null) {
-                    val feedback = Json.decodeFromString<AIFeedbackData>(jsonMatch)
-                    _aiFeedback.value = feedback
-                    Log.d("MufrodatViewModel", "AI Feedback success: ${feedback.score}")
+                    _aiFeedback.value = Json.decodeFromString<AIFeedbackData>(jsonMatch)
                 } else {
-                    Log.e("MufrodatViewModel", "Gagal menemukan JSON di AI Text: $aiTextResponse")
                     _aiFeedback.value = AIFeedbackData(0, "Gagal memproses jawaban AI.", "Coba ulangi lagi.")
                 }
             } catch (e: Exception) {
-                Log.e("MufrodatViewModel", "Error AI Correction", e)
-                _aiFeedback.value = AIFeedbackData(0, "Terjadi kesalahan koneksi ke AI: ${e.message}", "Coba lagi nanti.")
+                Log.e("HiwarViewModel", "Error AI Correction", e)
+                _aiFeedback.value = AIFeedbackData(0, "Terjadi kesalahan koneksi ke AI.", "Periksa internet dan coba lagi.")
             } finally {
                 _isLoading.value = false
             }

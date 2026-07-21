@@ -15,6 +15,7 @@ import com.fadhil.taba.ui.dashboard.home.HomeScreen
 import com.fadhil.taba.ui.dashboard.materi.DetailMateriScreen
 import com.fadhil.taba.ui.dashboard.materi.MateriScreen
 import com.fadhil.taba.ui.dashboard.mufrodat.MufrodatScreen
+import com.fadhil.taba.ui.dashboard.hiwar.HiwarScreen
 import com.fadhil.taba.ui.dashboard.settings.SettingsScreen
 import java.io.File
 
@@ -37,9 +38,11 @@ fun DashboardScreen(
     // States untuk sub-navigasi, gunakan ID atau ID modul agar bisa disimpan saat rotasi
     var selectedModuleId by rememberSaveable { mutableStateOf<Int?>(null) }
     var practiceModuleId by rememberSaveable { mutableStateOf<Int?>(null) }
+    var hiwarModuleId by rememberSaveable { mutableStateOf<Int?>(null) }
     
     val selectedModuleForDetail = selectedModuleId?.let { id -> ModuleData.modules.find { it.id == id } }
     val selectedModuleForPractice = practiceModuleId?.let { id -> ModuleData.modules.find { it.id == id } }
+    val selectedModuleForHiwar = hiwarModuleId?.let { id -> ModuleData.modules.find { it.id == id } }
     
     // Avatar state
     val avatarPath = settings.avatarPath ?: run {
@@ -60,8 +63,25 @@ fun DashboardScreen(
                 practiceModuleId = module.id
                 selectedModuleId = null
                 currentRoute = "mufrodat_internal"
+            },
+            onHiwarClick = { module ->
+                hiwarModuleId = module.id
+                selectedModuleId = null
+                currentRoute = "hiwar_internal"
             }
         )
+    } else if (currentRoute == "hiwar_internal") {
+        selectedModuleForHiwar?.let { module ->
+            HiwarScreen(
+                module = module,
+                username = profileName,
+                avatarPath = avatarPath,
+                onBack = {
+                    selectedModuleId = hiwarModuleId
+                    currentRoute = "materi"
+                }
+            )
+        }
     } else if (currentRoute == "mufrodat_internal") {
         MufrodatScreen(
             initialModule = selectedModuleForPractice,

@@ -37,6 +37,7 @@ android {
         // Gemini API Keys
         buildConfigField("String", "GEMINI_API_KEY_CHATBOT", "\"${localProperties.getProperty("GEMINI_API_KEY_CHATBOT") ?: ""}\"")
         buildConfigField("String", "GEMINI_API_KEY_HIWAR", "\"${localProperties.getProperty("GEMINI_API_KEY_HIWAR") ?: ""}\"")
+        buildConfigField("String", "GROQ_API_KEY", "\"${localProperties.getProperty("GROQ_API_KEY") ?: ""}\"")
     }
 
     buildTypes {

@@ -14,51 +14,51 @@ import io.ktor.serialization.kotlinx.json.*
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
+import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
 
+// 1. Data Class UI Chat
 @Serializable
 data class ChatMessage(
     val text: String,
     val isUser: Boolean
 )
 
+// 2. Data Class Request Groq (Format OpenAI)
 @Serializable
-data class GeminiRequest(
-    val contents: List<Content>,
-    val systemInstruction: Content? = null
+data class GroqRequest(
+    val model: String,
+    val messages: List<GroqMessage>
 )
 
 @Serializable
-data class Content(
-    val role: String? = null,
-    val parts: List<Part>
+data class GroqMessage(
+    val role: String, // "system", "user", atau "assistant"
+    val content: String
+)
+
+// 3. Data Class Response Groq
+@Serializable
+data class GroqResponse(
+    val choices: List<GroqChoice>? = null,
+    val error: GroqErrorDetail? = null
 )
 
 @Serializable
-data class Part(
-    val text: String
+data class GroqChoice(
+    val message: GroqMessage
 )
 
 @Serializable
-data class GeminiResponse(
-    val candidates: List<Candidate>? = null,
-    val error: GeminiError? = null
-)
-
-@Serializable
-data class Candidate(
-    val content: Content
-)
-
-@Serializable
-data class GeminiError(
+data class GroqErrorDetail(
     val message: String
 )
 
 class ChatAiViewModel : ViewModel() {
-    private val apiKey = BuildConfig.GEMINI_API_KEY_CHATBOT
-    
+    // Pastikan BuildConfig ini berisi API Key dari Groq (diawali dengan `gsk_...`)
+    private val apiKey = BuildConfig.GROQ_API_KEY
+
     private val client = HttpClient(OkHttp) {
         install(ContentNegotiation) {
             json(Json {
@@ -89,17 +89,22 @@ class ChatAiViewModel : ViewModel() {
         viewModelScope.launch {
             _isLoading.value = true
             try {
-                val url = "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=$apiKey"
-                
-                val requestBody = GeminiRequest(
-                    contents = listOf(
-                        Content(role = "user", parts = listOf(Part(text = userText)))
-                    ),
-                    systemInstruction = Content(parts = listOf(Part(text = systemInstructionText)))
+                // Endpoint Groq API
+                val url = "https://api.groq.com/openai/v1/chat/completions"
+
+                // Susun pesan: instruksi sistem diawali dengan role "system"
+                val requestBody = GroqRequest(
+                    model = "llama-3.3-70b-versatile", // Model cepat, cerdas, & gratis
+                    messages = listOf(
+                        GroqMessage(role = "system", content = systemInstructionText),
+                        GroqMessage(role = "user", content = userText)
+                    )
                 )
 
-                val response: GeminiResponse = client.post(url) {
+                val response: GroqResponse = client.post(url) {
                     contentType(ContentType.Application.Json)
+                    // API Key dikirim melalui Header Authorization Bearer Token
+                    header(HttpHeaders.Authorization, "Bearer $apiKey")
                     setBody(requestBody)
                 }.body()
 
@@ -107,9 +112,9 @@ class ChatAiViewModel : ViewModel() {
                     throw Exception(response.error.message)
                 }
 
-                val aiResponse = response.candidates?.firstOrNull()?.content?.parts?.firstOrNull()?.text
+                val aiResponse = response.choices?.firstOrNull()?.message?.content
                     ?: "Maaf, sistem AI tidak memberikan jawaban."
-                
+
                 val updatedMessages = _messages.value.toMutableList()
                 updatedMessages.add(ChatMessage(aiResponse, false))
                 _messages.value = updatedMessages

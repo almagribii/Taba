@@ -185,8 +185,10 @@ fun DetailMateriScreen(
                     Icon(Icons.AutoMirrored.Filled.Chat, contentDescription = null, tint = Color(0xFF166534))
                     Spacer(modifier = Modifier.width(12.dp))
                     Column {
-                        Text("Al-Hiwar (Latihan Percakapan)", fontWeight = FontWeight.Bold, color = Color(0xFF166534), fontSize = 14.sp)
-                        Text("Bicara interaktif dengan bantuan AI", color = Color(0xFF166534).copy(alpha = 0.7f), fontSize = 11.sp)
+                        val hiwarTitle = Localization.getString("hiwar_title", lang)
+                        val hiwarLabel = if (lang == "en") "(Conversation Practice)" else "(Latihan Percakapan)"
+                        Text("$hiwarTitle $hiwarLabel", fontWeight = FontWeight.Bold, color = Color(0xFF166534), fontSize = 14.sp)
+                        Text(Localization.getString("hiwar_subtitle", lang), color = Color(0xFF166534).copy(alpha = 0.7f), fontSize = 11.sp)
                     }
                     Spacer(modifier = Modifier.weight(1f))
                     Icon(Icons.Default.ChevronRight, contentDescription = null, tint = Color(0xFF166534))

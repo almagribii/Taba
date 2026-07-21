@@ -65,7 +65,8 @@ object Localization {
         "previous" to "Sebelumnya",
         "current_topic" to "Topik Saat Ini",
         "hiwar_title" to "Al-Hiwar",
-        "hiwar_subtitle" to "Bicara interaktif dengan bantuan AI"
+        "hiwar_subtitle" to "Bicara interaktif dengan bantuan AI",
+        "chat_ai_hint" to "Tanya Taba AI (Indo/Inggris/Arab)..."
     )
 
     private val enStrings = mapOf(
@@ -125,6 +126,7 @@ object Localization {
         "previous" to "Previous",
         "current_topic" to "Current Topic",
         "hiwar_title" to "Al-Hiwar",
-        "hiwar_subtitle" to "Speak interactively with AI assistance"
+        "hiwar_subtitle" to "Speak interactively with AI assistance",
+        "chat_ai_hint" to "Ask Taba AI (Eng/Indo/Ar)..."
     )
 }

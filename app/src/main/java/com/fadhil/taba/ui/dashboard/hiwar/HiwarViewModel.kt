@@ -8,6 +8,7 @@ import androidx.lifecycle.viewModelScope
 import com.fadhil.taba.BuildConfig
 import com.fadhil.taba.ui.dashboard.mufrodat.AIFeedbackData
 import io.ktor.client.*
+import io.ktor.client.call.body
 import io.ktor.client.engine.okhttp.*
 import io.ktor.client.plugins.*
 import io.ktor.client.plugins.contentnegotiation.*
@@ -18,12 +19,50 @@ import io.ktor.serialization.kotlinx.json.*
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
+import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.*
 import java.util.Locale
 
+// 1. Data Class Request Groq
+@Serializable
+data class GroqHiwarRequest(
+    val model: String,
+    val messages: List<GroqMessage>,
+    val response_format: ResponseFormat? = ResponseFormat("json_object")
+)
+
+@Serializable
+data class GroqMessage(
+    val role: String,
+    val content: String
+)
+
+@Serializable
+data class ResponseFormat(
+    val type: String
+)
+
+// 2. Data Class Response Groq
+@Serializable
+data class GroqHiwarResponse(
+    val choices: List<GroqChoice>? = null,
+    val error: GroqErrorDetail? = null
+)
+
+@Serializable
+data class GroqChoice(
+    val message: GroqMessage
+)
+
+@Serializable
+data class GroqErrorDetail(
+    val message: String
+)
+
 class HiwarViewModel(application: Application) : AndroidViewModel(application), TextToSpeech.OnInitListener {
-    private val apiKey = BuildConfig.GEMINI_API_KEY_HIWAR
-    
+    // Gunakan Groq API Key dari BuildConfig kamu (misal: GROQ_API_KEY)
+    private val apiKey = BuildConfig.GROQ_API_KEY
+
     private val client = HttpClient(OkHttp) {
         install(ContentNegotiation) {
             json(Json {
@@ -120,11 +159,11 @@ class HiwarViewModel(application: Application) : AndroidViewModel(application), 
                 val targetVoice = arabicVoices.find { voice ->
                     val name = voice.name.lowercase()
                     (gender == "male" && (name.contains("male") || name.contains("man") || name.contains("boy"))) ||
-                    (gender == "female" && (name.contains("female") || name.contains("woman") || name.contains("girl")))
+                            (gender == "female" && (name.contains("female") || name.contains("woman") || name.contains("girl")))
                 } ?: arabicVoices.find { voice ->
                     gender == "male" && arabicVoices.size > 1 && voice != arabicVoices.first()
                 } ?: arabicVoices.firstOrNull()
-                
+
                 if (targetVoice != null) {
                     tts?.voice = targetVoice
                 }
@@ -136,44 +175,52 @@ class HiwarViewModel(application: Application) : AndroidViewModel(application), 
 
     fun checkHiwarResponse(question: String, userSpeech: String, moduleTitle: String, moduleContent: String) {
         if (userSpeech.isBlank()) return
-        
+
         viewModelScope.launch {
             _isLoading.value = true
             _aiFeedback.value = null
             try {
-                val prompt = """
-                    Berperanlah sebagai guru Bahasa Arab yang interaktif. 
-                    Topik Materi: "$moduleTitle"
-                    Isi Materi: "$moduleContent"
+                val systemPrompt = """
+                    Berperanlah sebagai guru Bahasa Arab yang interaktif.
+                    Tugas utama kamu adalah menilai jawaban user yang berupa Speech-to-Text.
                     
-                    User sedang berlatih percakapan (Al-Hiwar) dan merespons pertanyaan: "$question".
-                    Jawaban user (dari Speech-to-Text): "$userSpeech".
-                    
-                    Tugas:
-                    1. Skor (0-100): Berikan skor kemiripan bunyi dan ketepatan konteks jawaban sesuai dengan topik "$moduleTitle". Berikan nilai yang cenderung toleran (80-100 jika benar secara konteks).
-                    2. Feedback: Berikan 1 kalimat apresiasi atau koreksi ringan dalam Bahasa Indonesia yang relevan dengan topik.
-                    3. Tips: Berikan 1 tips sangat singkat (maksimal 10 kata) untuk memperbaiki makhraj atau pilihan kata agar lebih sesuai dengan konteks "$moduleTitle".
-                    
-                    FORMAT JSON (MURNI):
+                    FORMAT OUTPUT HARUS JSON MURNI DENGAN KEYS:
                     {
-                      "score": (integer),
+                      "score": (integer 0-100),
                       "feedback": (string),
                       "tips": (string)
                     }
                 """.trimIndent()
 
-                val url = "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=$apiKey"
+                val userPrompt = """
+                    Topik Materi: "$moduleTitle"
+                    Isi Materi: "$moduleContent"
+                    
+                    User merespons pertanyaan: "$question".
+                    Jawaban user: "$userSpeech".
+                    
+                    1. Skor (0-100): Nilai kemiripan bunyi & konteks topik. Berikan nilai toleran (80-100 jika benar secara konteks).
+                    2. Feedback: 1 kalimat apresiasi/koreksi ringan dalam Bahasa Indonesia.
+                    3. Tips: 1 tips sangat singkat (maksimal 10 kata) untuk makhraj/pilihan kata.
+                """.trimIndent()
+
+                val url = "https://api.groq.com/openai/v1/chat/completions"
+
+                val requestBody = GroqHiwarRequest(
+                    model = "llama-3.3-70b-versatile",
+                    messages = listOf(
+                        GroqMessage(role = "system", content = systemPrompt),
+                        GroqMessage(role = "user", content = userPrompt)
+                    )
+                )
+
                 val response = client.post(url) {
                     contentType(ContentType.Application.Json)
-                    setBody(mapOf(
-                        "contents" to listOf(mapOf(
-                            "parts" to listOf(mapOf("text" to prompt))
-                        ))
-                    ))
+                    header(HttpHeaders.Authorization, "Bearer $apiKey")
+                    setBody(requestBody)
                 }
-                
+
                 val responseStatus = response.status
-                val responseText = response.bodyAsText()
 
                 if (responseStatus == HttpStatusCode.TooManyRequests) {
                     _aiFeedback.value = AIFeedbackData(0, "Terlalu banyak permintaan (Limit tercapai).", "Mohon tunggu sebentar lalu coba lagi.")
@@ -185,21 +232,18 @@ class HiwarViewModel(application: Application) : AndroidViewModel(application), 
                     return@launch
                 }
 
-                val responseJson = Json { ignoreUnknownKeys = true }
-                val geminiRawElement = responseJson.parseToJsonElement(responseText)
-                val aiTextResponse = geminiRawElement.jsonObject["candidates"]
-                    ?.jsonArray?.getOrNull(0)
-                    ?.jsonObject?.get("content")
-                    ?.jsonObject?.get("parts")
-                    ?.jsonArray?.getOrNull(0)
-                    ?.jsonObject?.get("text")
-                    ?.jsonPrimitive?.content ?: ""
+                val groqResponse: GroqHiwarResponse = response.body()
 
-                val jsonRegex = Regex("""\{.*\}""", RegexOption.DOT_MATCHES_ALL)
-                val jsonMatch = jsonRegex.find(aiTextResponse)?.value
-                
-                if (jsonMatch != null) {
-                    _aiFeedback.value = Json.decodeFromString<AIFeedbackData>(jsonMatch)
+                if (groqResponse.error != null) {
+                    throw Exception(groqResponse.error.message)
+                }
+
+                val rawContent = groqResponse.choices?.firstOrNull()?.message?.content
+
+                if (!rawContent.isNullOrBlank()) {
+                    // Parsing langsung balasan string JSON dari Groq ke Data Class AIFeedbackData
+                    val jsonParser = Json { ignoreUnknownKeys = true }
+                    _aiFeedback.value = jsonParser.decodeFromString<AIFeedbackData>(rawContent)
                 } else {
                     _aiFeedback.value = AIFeedbackData(0, "Gagal memproses jawaban AI.", "Coba ulangi lagi.")
                 }

@@ -22,7 +22,8 @@ import kotlinx.serialization.json.Json
 @Serializable
 data class ChatMessage(
     val text: String,
-    val isUser: Boolean
+    val isUser: Boolean,
+    val time: String = ""
 )
 
 // 2. Data Class Request Groq (Format OpenAI)
@@ -70,7 +71,7 @@ class ChatAiViewModel : ViewModel() {
     }
 
     private val _messages = MutableStateFlow<List<ChatMessage>>(listOf(
-        ChatMessage("Ahlan! Saya adalah asisten AI TABA. Ada yang bisa saya bantu dalam belajar Bahasa Arab hari ini?", false)
+        ChatMessage("Ahlan! Saya adalah asisten AI TABA. Ada yang bisa saya bantu dalam belajar Bahasa Arab hari ini?", false, "Now")
     ))
     val messages: StateFlow<List<ChatMessage>> = _messages
 
@@ -79,11 +80,13 @@ class ChatAiViewModel : ViewModel() {
 
     private val systemInstructionText = "Berperanlah sebagai asisten cerdas TABA yang ahli dalam Bahasa Arab. Berikan jawaban yang ramah, edukatif, dan memotivasi user untuk belajar. Jika user bertanya hal di luar belajar bahasa, arahkan kembali dengan sopan. Jawaban harus ringkas dan mudah dipahami."
 
+    private fun getCurrentTime(): String = java.text.SimpleDateFormat("HH:mm", java.util.Locale.getDefault()).format(java.util.Date())
+
     fun sendMessage(userText: String) {
         if (userText.isBlank()) return
 
         val currentMessages = _messages.value.toMutableList()
-        currentMessages.add(ChatMessage(userText, true))
+        currentMessages.add(ChatMessage(userText, true, getCurrentTime()))
         _messages.value = currentMessages
 
         viewModelScope.launch {
@@ -116,7 +119,7 @@ class ChatAiViewModel : ViewModel() {
                     ?: "Maaf, sistem AI tidak memberikan jawaban."
 
                 val updatedMessages = _messages.value.toMutableList()
-                updatedMessages.add(ChatMessage(aiResponse, false))
+                updatedMessages.add(ChatMessage(aiResponse, false, getCurrentTime()))
                 _messages.value = updatedMessages
             } catch (e: Exception) {
                 Log.e("ChatAiViewModel", "Error sending message", e)

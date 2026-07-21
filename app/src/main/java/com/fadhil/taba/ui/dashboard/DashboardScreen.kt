@@ -130,7 +130,10 @@ fun DashboardScreen(
                         bannerSubtitle = settings.materiBannerSubtitle,
                         searchPlaceholder = settings.searchPlaceholder
                     )
-                    "chat_ai" -> ChatAiScreen()
+                    "chat_ai" -> ChatAiScreen(
+                        username = profileName,
+                        avatarPath = avatarPath
+                    )
                     "settings" -> SettingsScreen(
                         username = profileName,
                         avatarPath = avatarPath,

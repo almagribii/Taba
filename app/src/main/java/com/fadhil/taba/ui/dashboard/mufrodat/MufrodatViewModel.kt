@@ -7,6 +7,7 @@ import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.fadhil.taba.BuildConfig
 import io.ktor.client.*
+import io.ktor.client.call.*
 import io.ktor.client.engine.okhttp.*
 import io.ktor.client.plugins.*
 import io.ktor.client.plugins.contentnegotiation.*
@@ -28,9 +29,45 @@ data class AIFeedbackData(
     val tips: String
 )
 
+// Data Class Request & Response Groq API
+@Serializable
+data class GroqMufrodatRequest(
+    val model: String,
+    val messages: List<GroqMessage>,
+    val response_format: ResponseFormat? = ResponseFormat("json_object")
+)
+
+@Serializable
+data class GroqMessage(
+    val role: String,
+    val content: String
+)
+
+@Serializable
+data class ResponseFormat(
+    val type: String
+)
+
+@Serializable
+data class GroqMufrodatResponse(
+    val choices: List<GroqChoice>? = null,
+    val error: GroqErrorDetail? = null
+)
+
+@Serializable
+data class GroqChoice(
+    val message: GroqMessage
+)
+
+@Serializable
+data class GroqErrorDetail(
+    val message: String
+)
+
 class MufrodatViewModel(application: Application) : AndroidViewModel(application), TextToSpeech.OnInitListener {
-    private val apiKey = BuildConfig.GEMINI_API_KEY_HIWAR
-    
+    // Gunakan Groq API Key dari BuildConfig kamu
+    private val apiKey = BuildConfig.GROQ_API_KEY
+
     private val client = HttpClient(OkHttp) {
         install(ContentNegotiation) {
             json(Json {
@@ -80,15 +117,15 @@ class MufrodatViewModel(application: Application) : AndroidViewModel(application
             val locale = Locale("ar")
             if (voices != null) {
                 val arabicVoices = voices.filter { it.locale.language == locale.language }
-                
+
                 val targetVoice = arabicVoices.find { voice ->
                     val name = voice.name.lowercase()
                     (gender == "male" && (name.contains("male") || name.contains("man") || name.contains("boy"))) ||
-                    (gender == "female" && (name.contains("female") || name.contains("woman") || name.contains("girl")))
+                            (gender == "female" && (name.contains("female") || name.contains("woman") || name.contains("girl")))
                 } ?: arabicVoices.find { voice ->
                     gender == "male" && arabicVoices.size > 1 && voice != arabicVoices.first()
                 } ?: arabicVoices.firstOrNull()
-                
+
                 if (targetVoice != null) {
                     Log.d("TTS", "Setting voice to: ${targetVoice.name} for gender: $gender")
                     tts?.voice = targetVoice
@@ -110,7 +147,7 @@ class MufrodatViewModel(application: Application) : AndroidViewModel(application
                 _isTtsReady.value = true
                 tts?.setSpeechRate(_audioSpeed)
                 applyVoiceGender(_voiceGender)
-                
+
                 tts?.setOnUtteranceProgressListener(object : android.speech.tts.UtteranceProgressListener() {
                     override fun onStart(utteranceId: String?) {
                         _currentlyPlayingText.value = utteranceId
@@ -150,54 +187,50 @@ class MufrodatViewModel(application: Application) : AndroidViewModel(application
             Log.e("MufrodatViewModel", "User speech is blank")
             return
         }
-        
+
         viewModelScope.launch {
             _isLoading.value = true
             _aiFeedback.value = null // Reset feedback sebelumnya
             try {
-                // Prompt yang lebih cerdas untuk koreksi
-                val prompt = """
-                    Berperanlah sebagai guru Bahasa Arab. User mencoba mengucapkan: "$arabicWord".
-                    Hasil suara user: "$userSpeech".
+                val systemPrompt = """
+                    Berperanlah sebagai guru Bahasa Arab yang ahli dalam pengucapan dan makhraj.
+                    Tugas utama kamu adalah menilai hasil ucapan user dari Speech-to-Text.
                     
-                    Tugas:
-                    1. Skor (0-100): Berikan skor yang ADIL dan haqiqi nya, jangan terlalu baik dan jangan terlalu jahat dalam menilai dengan memerhatikan harakat dari mufrodatnya juga. seperti user mengucap harakat fathah tapi sebenarnya harakatnya kasroh, maka harus dipertimbangkan dan dikasih tau juga
-                    2. Feedback: Berikan feedback berupa  kalimat apresiasi atau koreksi ringan dalam Bahasa Indonesia. 
-                    3. Tips: Berikan 1 tips sangat singkat (maksimal 7 kata) untuk makhrajnya.
-                    
-                    CONTOH:
+                    FORMAT OUTPUT HARUS BERUPA JSON MURNI DENGAN KEYS:
                     {
-                      "score": 95,
-                      "feedback": "M ممتاز! Pengucapan Anda sudah sangat jelas dan tepat.",
-                      "tips": "Pertahankan makhraj huruf tersebut."
-                    }
-                    
-                    FORMAT JSON (MURNI):
-                    {
-                      "score": (integer),
+                      "score": (integer 0-100),
                       "feedback": (string),
                       "tips": (string)
                     }
                 """.trimIndent()
 
-                val url = "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=$apiKey"
+                val userPrompt = """
+                    User mencoba mengucapkan Mufrodat: "$arabicWord".
+                    Hasil suara user (STT): "$userSpeech".
+                    
+                    Tugas:
+                    1. Skor (0-100): Berikan skor yang ADIL dan objektif dengan memperhatikan harakat dari mufrodatnya. Jika user mengucap harakat fathah tetapi seharusnya kasroh, kurangi poin dan jelaskan.
+                    2. Feedback: Kalimat apresiasi atau koreksi ringan dalam Bahasa Indonesia.
+                    3. Tips: 1 tips sangat singkat (maksimal 7 kata) untuk perbaikan makhraj.
+                """.trimIndent()
 
-                val requestBody = mapOf(
-                    "contents" to listOf(mapOf(
-                        "parts" to listOf(mapOf(
-                            "text" to prompt
-                        ))
-                    ))
+                val url = "https://api.groq.com/openai/v1/chat/completions"
+
+                val requestBody = GroqMufrodatRequest(
+                    model = "llama-3.3-70b-versatile",
+                    messages = listOf(
+                        GroqMessage(role = "system", content = systemPrompt),
+                        GroqMessage(role = "user", content = userPrompt)
+                    )
                 )
 
                 val response = client.post(url) {
                     contentType(ContentType.Application.Json)
+                    header(HttpHeaders.Authorization, "Bearer $apiKey")
                     setBody(requestBody)
                 }
-                
+
                 val responseStatus = response.status
-                val responseText = response.bodyAsText()
-                Log.d("MufrodatViewModel", "AI Raw Response: ${responseText.take(200)}...")
 
                 if (responseStatus == HttpStatusCode.TooManyRequests) {
                     _aiFeedback.value = AIFeedbackData(0, "Terlalu banyak permintaan (Limit tercapai).", "Mohon tunggu sebentar lalu coba lagi.")
@@ -209,29 +242,21 @@ class MufrodatViewModel(application: Application) : AndroidViewModel(application
                     return@launch
                 }
 
-                // Perbaikan Parsing: Gemini mengembalikan objek dengan key 'candidates'
-                val responseJson = Json { ignoreUnknownKeys = true }
-                val geminiRawElement = responseJson.parseToJsonElement(responseText)
-                
-                // Ambil teks dari struktur JSON Gemini secara manual
-                val aiTextResponse = geminiRawElement.jsonObject["candidates"]
-                    ?.jsonArray?.getOrNull(0)
-                    ?.jsonObject?.get("content")
-                    ?.jsonObject?.get("parts")
-                    ?.jsonArray?.getOrNull(0)
-                    ?.jsonObject?.get("text")
-                    ?.jsonPrimitive?.content ?: ""
+                val groqResponse: GroqMufrodatResponse = response.body()
 
-                // Extract JSON murni dari teks tersebut
-                val jsonRegex = Regex("""\{.*\}""", RegexOption.DOT_MATCHES_ALL)
-                val jsonMatch = jsonRegex.find(aiTextResponse)?.value
-                
-                if (jsonMatch != null) {
-                    val feedback = Json.decodeFromString<AIFeedbackData>(jsonMatch)
+                if (groqResponse.error != null) {
+                    throw Exception(groqResponse.error.message)
+                }
+
+                val rawContent = groqResponse.choices?.firstOrNull()?.message?.content
+
+                if (!rawContent.isNullOrBlank()) {
+                    val jsonParser = Json { ignoreUnknownKeys = true }
+                    val feedback = jsonParser.decodeFromString<AIFeedbackData>(rawContent)
                     _aiFeedback.value = feedback
                     Log.d("MufrodatViewModel", "AI Feedback success: ${feedback.score}")
                 } else {
-                    Log.e("MufrodatViewModel", "Gagal menemukan JSON di AI Text: $aiTextResponse")
+                    Log.e("MufrodatViewModel", "Gagal memproses response kosong dari Groq")
                     _aiFeedback.value = AIFeedbackData(0, "Gagal memproses jawaban AI.", "Coba ulangi lagi.")
                 }
             } catch (e: Exception) {

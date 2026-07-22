@@ -42,6 +42,8 @@ fun SettingsScreen(
     username: String,
     avatarPath: String?,
     onAvatarChange: (String) -> Unit,
+    onHelpClick: () -> Unit,
+    onPrivacyPolicyClick: () -> Unit,
     onSignOut: () -> Unit
 ) {
     val context = LocalContext.current
@@ -282,9 +284,9 @@ fun SettingsScreen(
         Spacer(modifier = Modifier.height(16.dp))
         Surface(modifier = Modifier.fillMaxWidth(), color = Color.White, shape = RoundedCornerShape(12.dp), border = BorderStroke(1.dp, Color(0xFFF3F4F6))) {
             Column {
-                SettingItem(Icons.Default.Help, Localization.getString("help", lang))
+                SettingItem(Icons.Default.Help, Localization.getString("help", lang), onClick = onHelpClick)
                 SettingDivider()
-                SettingItem(Icons.Default.PrivacyTip, Localization.getString("privacy_policy", lang))
+                SettingItem(Icons.Default.PrivacyTip, Localization.getString("privacy_policy", lang), onClick = onPrivacyPolicyClick)
                 SettingDivider()
                 SettingItem(icon = Icons.AutoMirrored.Filled.Logout, title = Localization.getString("sign_out", lang), textColor = Color(0xFFEF4444), onClick = onSignOut)
             }

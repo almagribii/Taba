@@ -16,6 +16,7 @@ import com.fadhil.taba.ui.dashboard.materi.DetailMateriScreen
 import com.fadhil.taba.ui.dashboard.materi.MateriScreen
 import com.fadhil.taba.ui.dashboard.mufrodat.MufrodatScreen
 import com.fadhil.taba.ui.dashboard.hiwar.HiwarScreen
+import com.fadhil.taba.ui.dashboard.help.HelpScreen
 import com.fadhil.taba.ui.dashboard.settings.SettingsScreen
 import java.io.File
 
@@ -140,11 +141,18 @@ fun DashboardScreen(
                         onAvatarChange = { newPath ->
                             AppSettingsStore.update(context) { it.copy(avatarPath = newPath) }
                         },
+                        onHelpClick = { currentRoute = "help" },
                         onSignOut = {
                             authViewModel.signOut(context) {
                                 onSignOut()
                             }
                         }
+                    )
+                    "help" -> HelpScreen(
+                        username = profileName,
+                        avatarPath = avatarPath,
+                        lang = settings.language,
+                        onBack = { currentRoute = "settings" }
                     )
                 }
             }

@@ -10,14 +10,19 @@ import io.ktor.client.call.*
 import io.ktor.client.engine.okhttp.*
 import io.ktor.client.plugins.contentnegotiation.*
 import io.ktor.client.request.*
+import io.ktor.client.request.forms.*
+import io.ktor.client.statement.*
 import io.ktor.http.*
+import io.ktor.http.content.*
 import io.ktor.serialization.kotlinx.json.*
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
+import java.io.File
 
 // 1. Data Class UI Chat
 @Serializable
@@ -54,6 +59,11 @@ data class GroqChoice(
 )
 
 @Serializable
+data class GroqTranscriptionResponse(
+    val text: String
+)
+
+@Serializable
 data class GroqErrorDetail(
     val message: String
 )
@@ -73,12 +83,15 @@ class ChatAiViewModel : ViewModel() {
     }
 
     private val _messages = MutableStateFlow<List<ChatMessage>>(listOf(
-        ChatMessage("Ahlan! Saya adalah asisten AI TABA. / Hello! I'm TABA AI. Ada yang bisa saya bantu dalam belajar Bahasa Arab hari ini?", false, "Now", shouldAnimate = true)
+        ChatMessage("Ahlan! Saya adalah asisten TABA. Ada yang bisa saya bantu dalam belajar Bahasa Arab hari ini?", false, "Now", shouldAnimate = true)
     ))
     val messages: StateFlow<List<ChatMessage>> = _messages
 
     private val _isLoading = MutableStateFlow(false)
     val isLoading: StateFlow<Boolean> = _isLoading
+
+    private val _isTranscribing = MutableStateFlow(false)
+    val isTranscribing: StateFlow<Boolean> = _isTranscribing.asStateFlow()
 
     private fun systemInstructionTextFor(userText: String): String {
         return if (Localization.prefersEnglishResponse(userText)) {
@@ -142,6 +155,41 @@ class ChatAiViewModel : ViewModel() {
                 _messages.value = updatedMessages
             } finally {
                 _isLoading.value = false
+            }
+        }
+    }
+
+    fun transcribeAudio(filePath: String, onResult: (String) -> Unit) {
+        val file = File(filePath)
+        if (!file.exists()) return
+
+        viewModelScope.launch {
+            _isTranscribing.value = true
+            try {
+                val url = "https://api.groq.com/openai/v1/audio/transcriptions"
+                val response = client.post(url) {
+                    header(HttpHeaders.Authorization, "Bearer $apiKey")
+                    setBody(MultiPartFormDataContent(
+                        formData {
+                            append("file", file.readBytes(), Headers.build {
+                                append(HttpHeaders.ContentDisposition, "filename=\"${file.name}\"")
+                                append(HttpHeaders.ContentType, "audio/mpeg")
+                            })
+                            append("model", "whisper-large-v3")
+                        }
+                    ))
+                }
+
+                if (response.status.isSuccess()) {
+                    val result: GroqTranscriptionResponse = response.body()
+                    onResult(result.text)
+                } else {
+                    Log.e("ChatAiViewModel", "Transcription failed: ${response.status}")
+                }
+            } catch (e: Exception) {
+                Log.e("ChatAiViewModel", "Transcription error", e)
+            } finally {
+                _isTranscribing.value = false
             }
         }
     }

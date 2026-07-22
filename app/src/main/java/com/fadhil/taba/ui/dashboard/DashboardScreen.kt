@@ -123,7 +123,7 @@ fun DashboardScreen(
                     .fillMaxSize()
                     .padding(
                         top = if (isHeaderScreen) 0.dp else paddingValues.calculateTopPadding(),
-                        bottom = if (isHeaderScreen) 0.dp else paddingValues.calculateBottomPadding(),
+                        bottom = paddingValues.calculateBottomPadding(),
                         start = paddingValues.calculateStartPadding(androidx.compose.ui.unit.LayoutDirection.Ltr),
                         end = paddingValues.calculateEndPadding(androidx.compose.ui.unit.LayoutDirection.Ltr)
                     )

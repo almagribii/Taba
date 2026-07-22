@@ -1,9 +1,8 @@
 package com.fadhil.taba.ui.dashboard.chat_ai
 
 import android.Manifest
-import android.app.Activity
-import android.content.Intent
-import android.speech.RecognizerIntent
+import android.media.MediaRecorder
+import android.util.Log
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.Image
@@ -27,6 +26,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -38,6 +38,8 @@ import com.fadhil.taba.data.settings.AppSettingsStore
 import com.fadhil.taba.data.settings.Localization
 import com.fadhil.taba.ui.dashboard.TabaHeader
 import com.fadhil.taba.ui.theme.GreenPrimary
+import java.io.File
+import java.util.Locale
 
 @Composable
 fun ChatAiScreen(
@@ -47,8 +49,10 @@ fun ChatAiScreen(
 ) {
     val messages by viewModel.messages.collectAsState()
     val isLoading by viewModel.isLoading.collectAsState()
+    val isTranscribing by viewModel.isTranscribing.collectAsState()
     var inputText by remember { mutableStateOf("") }
     val listState = rememberLazyListState()
+    val context = LocalContext.current
     val settings by AppSettingsStore.settings.collectAsState()
     val lang = settings.language
 
@@ -58,12 +62,40 @@ fun ChatAiScreen(
         }
     }
 
-    val speechLauncher = rememberLauncherForActivityResult(
-        contract = ActivityResultContracts.StartActivityForResult()
-    ) { result ->
-        if (result.resultCode == Activity.RESULT_OK) {
-            val spokenText = result.data?.getStringArrayListExtra(RecognizerIntent.EXTRA_RESULTS)?.get(0) ?: ""
-            inputText = spokenText
+    // Recording Logic
+    var recorder by remember { mutableStateOf<MediaRecorder?>(null) }
+    var tempAudioFile by remember { mutableStateOf<File?>(null) }
+    var isRecording by remember { mutableStateOf(false) }
+    var recordingTime by remember { mutableIntStateOf(0) }
+
+    LaunchedEffect(isRecording) {
+        if (isRecording) {
+            recordingTime = 0
+            while (isRecording) {
+                delay(1000L)
+                recordingTime++
+            }
+        }
+    }
+
+    fun stopRecording(discardFile: Boolean = false) {
+        if (isRecording) {
+            try {
+                recorder?.stop()
+            } catch (e: Exception) {
+                Log.w("ChatAiScreen", "Recorder stop skipped", e)
+            }
+        }
+        try {
+            recorder?.release()
+        } catch (e: Exception) {
+            Log.w("ChatAiScreen", "Recorder release skipped", e)
+        }
+        recorder = null
+        isRecording = false
+        if (discardFile) {
+            tempAudioFile?.takeIf { it.exists() }?.delete()
+            tempAudioFile = null
         }
     }
 
@@ -71,11 +103,28 @@ fun ChatAiScreen(
         contract = ActivityResultContracts.RequestPermission()
     ) { isGranted ->
         if (isGranted) {
-            val intent = Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH).apply {
-                putExtra(RecognizerIntent.EXTRA_LANGUAGE_MODEL, RecognizerIntent.LANGUAGE_MODEL_FREE_FORM)
-                putExtra(RecognizerIntent.EXTRA_LANGUAGE, if (lang == "en") "en-US" else "id-ID")
+            val file = File(context.cacheDir, "chat_rec_${System.currentTimeMillis()}.m4a")
+            tempAudioFile = file
+            try {
+                recorder = MediaRecorder().apply {
+                    setAudioSource(MediaRecorder.AudioSource.MIC)
+                    setOutputFormat(MediaRecorder.OutputFormat.MPEG_4)
+                    setAudioEncoder(MediaRecorder.AudioEncoder.AAC)
+                    setOutputFile(file.absolutePath)
+                    prepare()
+                    start()
+                }
+                isRecording = true
+            } catch (e: Exception) {
+                stopRecording(discardFile = true)
+                Log.e("ChatAiScreen", "Failed to start recording", e)
             }
-            speechLauncher.launch(intent)
+        }
+    }
+
+    DisposableEffect(Unit) {
+        onDispose {
+            stopRecording(discardFile = true)
         }
     }
 
@@ -92,7 +141,7 @@ fun ChatAiScreen(
         // Main Surface overlapping header slightly
         Surface(
             modifier = Modifier
-                .fillMaxSize()
+                .weight(1f)
                 .offset(y = (-8).dp),
             color = Color(0xFFF9F7F2),
             shape = RoundedCornerShape(topStart = 18.dp, topEnd = 18.dp)
@@ -129,9 +178,7 @@ fun ChatAiScreen(
                 ) {
                     Row(
                         modifier = Modifier
-                            
                             .padding(horizontal = 12.dp, vertical = 8.dp)
-                            .navigationBarsPadding()
                             .imePadding(),
                         verticalAlignment = Alignment.Bottom
                     ) {
@@ -151,9 +198,29 @@ fun ChatAiScreen(
                             shape = RoundedCornerShape(24.dp),
                             trailingIcon = {
                                 IconButton(onClick = {
-                                    permissionLauncher.launch(Manifest.permission.RECORD_AUDIO)
+                                    if (isRecording) {
+                                        stopRecording()
+                                        tempAudioFile?.let { file ->
+                                            viewModel.transcribeAudio(file.absolutePath) { transcribed ->
+                                                inputText = transcribed
+                                            }
+                                        }
+                                    } else {
+                                        permissionLauncher.launch(Manifest.permission.RECORD_AUDIO)
+                                    }
                                 }) {
-                                    Icon(Icons.Default.Mic, contentDescription = null, tint = GreenPrimary)
+                                    if (isRecording) {
+                                        Text(
+                                            text = String.format(Locale.getDefault(), "%02d:%02d", recordingTime / 60, recordingTime % 60),
+                                            fontSize = 10.sp,
+                                            color = Color.Red,
+                                            fontWeight = androidx.compose.ui.text.font.FontWeight.Bold
+                                        )
+                                    } else if (isTranscribing) {
+                                        CircularProgressIndicator(modifier = Modifier.size(20.dp), strokeWidth = 2.dp, color = GreenPrimary)
+                                    } else {
+                                        Icon(Icons.Default.Mic, contentDescription = null, tint = GreenPrimary)
+                                    }
                                 }
                             },
                             colors = OutlinedTextFieldDefaults.colors(
@@ -236,7 +303,7 @@ fun ModernChatBubble(
     Row(
         modifier = Modifier.fillMaxWidth(),
         horizontalArrangement = if (isUser) Arrangement.End else Arrangement.Start,
-        verticalAlignment = Alignment.Bottom
+        verticalAlignment = Alignment.Top
     ) {
         if (!isUser) {
             Box(
@@ -248,7 +315,7 @@ fun ModernChatBubble(
                 contentAlignment = Alignment.Center
             ) {
                 Image(
-                    painter = painterResource(id = R.drawable.taba),
+                    painter = painterResource(id = R.drawable.tabaa),
                     contentDescription = null,
                     modifier = Modifier.fillMaxSize(),
                     contentScale = ContentScale.Crop

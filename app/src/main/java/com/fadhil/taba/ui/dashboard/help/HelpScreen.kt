@@ -23,6 +23,11 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.viewinterop.AndroidView
+import android.app.Activity
+import androidx.compose.runtime.SideEffect
+import androidx.compose.ui.platform.LocalView
+import androidx.compose.ui.graphics.toArgb
+import androidx.core.view.WindowCompat
 import androidx.core.graphics.toColorInt
 import androidx.core.text.HtmlCompat
 import com.fadhil.taba.ui.theme.GoldAccent
@@ -77,34 +82,62 @@ fun HelpScreen(
             .fillMaxSize()
             .background(GreenPrimary)
     ) {
-        // Hero Header - solid green band with rounded bottom
+        // set status bar to match header
+        val view = LocalView.current
+        if (!view.isInEditMode) {
+            SideEffect {
+                val window = (view.context as Activity).window
+                window.statusBarColor = GreenPrimary.toArgb()
+                WindowCompat.getInsetsController(window, view).isAppearanceLightStatusBars = false
+            }
+        }
+
+        // Hero Header - three-tone angled stripes
         Box(
             modifier = Modifier
                 .fillMaxWidth()
-                .height(110.dp)
-                .clip(RoundedCornerShape(bottomStart = 20.dp, bottomEnd = 20.dp))
-                .background(
-                    brush = Brush.horizontalGradient(
-                        colors = listOf(GreenPrimary, GreenPrimary.copy(alpha = 0.95f))
-                    )
-                )
+                .height(120.dp)
         ) {
-            // subtle angled accent on right
+            // base band
+            Box(modifier = Modifier
+                .matchParentSize()
+                .background(GreenPrimary))
+
+            // three angled stripes drawn on Canvas
             androidx.compose.foundation.Canvas(modifier = Modifier
-                .fillMaxHeight()
-                .width(100.dp)
-                .align(Alignment.CenterEnd)) {
+                .matchParentSize()) {
                 val w = size.width
                 val h = size.height
-                val p = androidx.compose.ui.graphics.Path().apply {
+
+                // left dominant stripe
+                val p1 = androidx.compose.ui.graphics.Path().apply {
                     moveTo(0f, 0f)
-                    lineTo(w * 0.55f, 0f)
-                    lineTo(w, h / 2f)
-                    lineTo(w * 0.55f, h)
+                    lineTo(w * 0.65f, 0f)
+                    lineTo(w * 0.45f, h)
                     lineTo(0f, h)
                     close()
                 }
-                drawPath(path = p, color = GreenPrimary.copy(alpha = 0.28f))
+                drawPath(path = p1, color = GreenPrimary.copy(alpha = 0.95f))
+
+                // center thinner stripe
+                val p2 = androidx.compose.ui.graphics.Path().apply {
+                    moveTo(w * 0.5f, 0f)
+                    lineTo(w * 0.9f, 0f)
+                    lineTo(w * 0.7f, h)
+                    lineTo(w * 0.3f, h)
+                    close()
+                }
+                drawPath(path = p2, color = GreenPrimary.copy(alpha = 0.8f))
+
+                // right accent chevron
+                val p3 = androidx.compose.ui.graphics.Path().apply {
+                    moveTo(w * 0.75f, 0f)
+                    lineTo(w, 0f)
+                    lineTo(w, h)
+                    lineTo(w * 0.6f, h)
+                    close()
+                }
+                drawPath(path = p3, color = GreenPrimary.copy(alpha = 0.6f))
             }
 
             Row(modifier = Modifier
@@ -125,13 +158,13 @@ fun HelpScreen(
             }
         }
 
-        // White content Surface overlapping header (floating)
+        // White content Surface placed below header with small overlap
         Surface(
             modifier = Modifier
                 .fillMaxSize()
-                .offset(y = (-24).dp),
+                .offset(y = (-8).dp),
             color = Color(0xFFF8F9FA),
-            shape = RoundedCornerShape(topStart = 20.dp, topEnd = 20.dp)
+            shape = RoundedCornerShape(topStart = 18.dp, topEnd = 18.dp)
         ) {
             Column(
                 modifier = Modifier

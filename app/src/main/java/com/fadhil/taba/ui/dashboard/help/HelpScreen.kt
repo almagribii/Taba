@@ -15,6 +15,7 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
@@ -76,63 +77,31 @@ fun HelpScreen(
             .fillMaxSize()
             .background(Color(0xFFF8F9FA))
     ) {
-        // Hero Header - multi-tone with angled accent on right, no image
+        // Hero Header - simplified: arrow + two-line title
         Box(
             modifier = Modifier
                 .fillMaxWidth()
-                .height(150.dp)
+                .height(140.dp)
                 .background(
                     brush = Brush.horizontalGradient(
                         colors = listOf(GreenPrimary, GreenPrimary.copy(alpha = 0.9f))
                     )
                 )
         ) {
-            // Angled accent on right using Canvas (creates chevron/trapezoid)
-            androidx.compose.foundation.Canvas(modifier = Modifier
-                .fillMaxHeight()
-                .width(120.dp)
-                .align(Alignment.CenterEnd)) {
-                val w = size.width
-                val h = size.height
-                val p = androidx.compose.ui.graphics.Path().apply {
-                    moveTo(0f, 0f)
-                    lineTo(w * 0.5f, 0f)
-                    lineTo(w, h / 2f)
-                    lineTo(w * 0.5f, h)
-                    lineTo(0f, h)
-                    close()
-                }
-                drawPath(path = p, color = GreenPrimary.copy(alpha = 0.35f))
-            }
-
             Row(modifier = Modifier
                 .fillMaxWidth()
                 .padding(horizontal = 12.dp, vertical = 12.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                // back pill
-                Surface(shape = RoundedCornerShape(10.dp), color = Color.White.copy(alpha = 0.14f), modifier = Modifier.size(40.dp)) {
-                    Box(contentAlignment = Alignment.Center) {
-                        IconButton(onClick = onBack, modifier = Modifier.size(40.dp)) {
-                            Icon(Icons.Default.ArrowBack, contentDescription = "Back", tint = Color.White)
-                        }
-                    }
+                IconButton(onClick = onBack) {
+                    Icon(Icons.Default.ArrowBack, contentDescription = "Back", tint = Color.White)
                 }
 
-                Spacer(modifier = Modifier.width(12.dp))
+                Spacer(modifier = Modifier.width(8.dp))
 
-                Column(modifier = Modifier.weight(1f)) {
-                    Text(text = "Bantuan & Panduan", color = Color.White, fontSize = 20.sp, fontWeight = FontWeight.SemiBold)
-                    Text(text = "Temukan solusi cepat untuk kendala Anda", color = Color.White.copy(alpha = 0.9f), fontSize = 12.sp)
-                }
-
-                // small label on right that matches hue
-                Box(modifier = Modifier
-                    .clip(RoundedCornerShape(topStart = 12.dp, bottomStart = 12.dp))
-                    .background(GoldAccent.copy(alpha = 0.12f))
-                    .padding(horizontal = 12.dp, vertical = 8.dp)
-                    .align(Alignment.CenterVertically)) {
-                    Text(text = "Panduan", color = Color.White.copy(alpha = 0.95f), fontSize = 12.sp)
+                Column {
+                    Text(text = "Bantuan", color = Color.White, fontSize = 20.sp, fontWeight = FontWeight.SemiBold)
+                    Text(text = "Panduan", color = Color.White.copy(alpha = 0.9f), fontSize = 12.sp)
                 }
             }
         }

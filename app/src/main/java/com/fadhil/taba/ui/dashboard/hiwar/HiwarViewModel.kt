@@ -16,8 +16,10 @@ import io.ktor.client.engine.okhttp.*
 import io.ktor.client.plugins.*
 import io.ktor.client.plugins.contentnegotiation.*
 import io.ktor.client.request.*
+import io.ktor.client.request.forms.*
 import io.ktor.client.statement.*
 import io.ktor.http.*
+import io.ktor.http.content.*
 import io.ktor.serialization.kotlinx.json.*
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
@@ -65,6 +67,11 @@ data class GroqErrorDetail(
     val message: String
 )
 
+@Serializable
+data class GroqTranscriptionResponse(
+    val text: String
+)
+
 class HiwarViewModel(application: Application) : AndroidViewModel(application), TextToSpeech.OnInitListener {
     private val apiKey = BuildConfig.GROQ_API_KEY_HIWAR
 
@@ -87,6 +94,9 @@ class HiwarViewModel(application: Application) : AndroidViewModel(application), 
 
     private val _isLoading = MutableStateFlow(false)
     val isLoading: StateFlow<Boolean> = _isLoading
+
+    private val _isTranscribing = MutableStateFlow(false)
+    val isTranscribing: StateFlow<Boolean> = _isTranscribing.asStateFlow()
 
     private var tts: TextToSpeech? = null
     private val _isTtsReady = MutableStateFlow(false)
@@ -304,6 +314,44 @@ class HiwarViewModel(application: Application) : AndroidViewModel(application), 
             AIFeedbackData(0, "I couldn't catch your speech. Please try again.", "Speak a little closer to the mic.")
         } else {
             AIFeedbackData(0, "Ucapan belum tertangkap. Coba ulangi lagi.", "Dekatkan mic dan bicara lebih jelas.")
+        }
+    }
+
+    fun transcribeAudio(filePath: String, question: String, moduleTitle: String, moduleContent: String) {
+        val file = File(filePath)
+        if (!file.exists()) return
+
+        viewModelScope.launch {
+            _isTranscribing.value = true
+            _aiFeedback.value = null
+            try {
+                val url = "https://api.groq.com/openai/v1/audio/transcriptions"
+                val response = client.post(url) {
+                    header(HttpHeaders.Authorization, "Bearer $apiKey")
+                    setBody(MultiPartFormDataContent(
+                        formData {
+                            append("file", file.readBytes(), Headers.build {
+                                append(HttpHeaders.ContentDisposition, "filename=\"${file.name}\"")
+                                append(HttpHeaders.ContentType, "audio/mpeg")
+                            })
+                            append("model", "whisper-large-v3")
+                        }
+                    ))
+                }
+
+                if (response.status.isSuccess()) {
+                    val result: GroqTranscriptionResponse = response.body()
+                    checkHiwarResponse(question, result.text, moduleTitle, moduleContent)
+                } else {
+                    Log.e("HiwarViewModel", "Transcription failed: ${response.status}")
+                    _aiFeedback.value = AIFeedbackData(0, "Gagal mengenali suara.", "Pastikan suara terdengar jelas.")
+                }
+            } catch (e: Exception) {
+                Log.e("HiwarViewModel", "Transcription error", e)
+                _aiFeedback.value = AIFeedbackData(0, "Error Transkripsi.", "Cek koneksi internet.")
+            } finally {
+                _isTranscribing.value = false
+            }
         }
     }
 

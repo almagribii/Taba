@@ -2,10 +2,8 @@ package com.fadhil.taba.ui.dashboard.hiwar
 
 import android.Manifest
 import android.app.Activity
-import android.content.Intent
 import android.content.pm.ActivityInfo
 import android.media.MediaRecorder
-import android.speech.RecognizerIntent
 import android.util.Log
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
@@ -20,7 +18,6 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.Chat
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -47,6 +44,7 @@ import com.fadhil.taba.ui.dashboard.mufrodat.AIFeedbackPlaceholderSection
 import com.fadhil.taba.ui.dashboard.mufrodat.MufrodatSettingsBottomSheet
 import com.fadhil.taba.ui.dashboard.mufrodat.WaveformVisualizer
 import com.fadhil.taba.ui.theme.GreenPrimary
+import kotlinx.coroutines.delay
 import java.io.File
 import java.util.Locale
 
@@ -68,6 +66,7 @@ fun HiwarScreen(
     
     val aiFeedback by viewModel.aiFeedback.collectAsState()
     val isAiLoading by viewModel.isLoading.collectAsState()
+    val isTranscribing by viewModel.isTranscribing.collectAsState()
     val currentlyPlaying by viewModel.currentlyPlayingText.collectAsState()
 
     val userVoicePath by viewModel.userVoicePath.collectAsState()
@@ -87,12 +86,19 @@ fun HiwarScreen(
     var tempAudioFile by remember { mutableStateOf<File?>(null) }
     var isRecording by remember { mutableStateOf(false) }
     var recordingQuestionIndex by remember { mutableIntStateOf(-1) }
+    var recordingTime by remember { mutableIntStateOf(0) }
+
+    LaunchedEffect(isRecording) {
+        if (isRecording) {
+            recordingTime = 0
+            while (isRecording) {
+                delay(1000L)
+                recordingTime++
+            }
+        }
+    }
 
     fun formatArabic(text: String): String = if (showHarakat) text else text.removeHarakat()
-    
-    fun cleanQuestion(text: String): String {
-        return text.replace(Regex("^[0-9١-٩]+\\.\\s*"), "")
-    }
 
     fun stopRecording(discardFile: Boolean = false) {
         if (isRecording) {
@@ -115,28 +121,6 @@ fun HiwarScreen(
         }
     }
 
-    val speechLauncher = rememberLauncherForActivityResult(
-        contract = ActivityResultContracts.StartActivityForResult()
-    ) { result ->
-        val questionAtStart = recordingQuestionIndex
-        val fileAtStart = tempAudioFile
-        stopRecording()
-
-        if (result.resultCode == Activity.RESULT_OK && questionAtStart == currentQuestionIndex) {
-            fileAtStart?.let { viewModel.setRecordedVoice(it.absolutePath) }
-            val spokenText = result.data?.getStringArrayListExtra(RecognizerIntent.EXTRA_RESULTS)?.get(0) ?: ""
-            if (spokenText.isBlank()) {
-                viewModel.showSpeechCaptureHint(lang)
-            } else {
-                currentQuestionObj?.let {
-                    viewModel.checkHiwarResponse(it.arabic, spokenText, module.title, module.content)
-                }
-            }
-        } else if (questionAtStart != currentQuestionIndex) {
-            fileAtStart?.takeIf { it.exists() }?.delete()
-        }
-    }
-
     val permissionLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.RequestPermission()
     ) { isGranted ->
@@ -145,7 +129,7 @@ fun HiwarScreen(
             tempAudioFile = file
             try {
                 recorder = MediaRecorder().apply {
-                    setAudioSource(MediaRecorder.AudioSource.VOICE_RECOGNITION)
+                    setAudioSource(MediaRecorder.AudioSource.MIC)
                     setOutputFormat(MediaRecorder.OutputFormat.MPEG_4)
                     setAudioEncoder(MediaRecorder.AudioEncoder.AAC)
                     setOutputFile(file.absolutePath)
@@ -153,23 +137,11 @@ fun HiwarScreen(
                     start()
                 }
                 isRecording = true
+                recordingQuestionIndex = currentQuestionIndex
             } catch (e: Exception) {
                 stopRecording(discardFile = true)
                 Log.e("HiwarScreen", "Failed to start recording", e)
-                return@rememberLauncherForActivityResult
             }
-
-            recordingQuestionIndex = currentQuestionIndex
-            val intent = Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH).apply {
-                putExtra(RecognizerIntent.EXTRA_LANGUAGE_MODEL, RecognizerIntent.LANGUAGE_MODEL_FREE_FORM)
-                putExtra(RecognizerIntent.EXTRA_LANGUAGE, "ar-SA")
-                putExtra(RecognizerIntent.EXTRA_LANGUAGE_PREFERENCE, "ar-SA")
-                putExtra(RecognizerIntent.EXTRA_ONLY_RETURN_LANGUAGE_PREFERENCE, true)
-                putExtra(RecognizerIntent.EXTRA_MAX_RESULTS, 5)
-                putExtra(RecognizerIntent.EXTRA_PARTIAL_RESULTS, true)
-                putExtra(RecognizerIntent.EXTRA_PROMPT, "Speak now")
-            }
-            speechLauncher.launch(intent)
         }
     }
 
@@ -248,114 +220,104 @@ fun HiwarScreen(
                             color = Color.Gray
                         )
                     }
-                    
-                    Spacer(modifier = Modifier.height(16.dp))
-                    
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(horizontal = 16.dp),
-                        horizontalArrangement = Arrangement.spacedBy(8.dp)
-                    ) {
-                        questions.forEachIndexed { index, _ ->
-                            val isSelected = index == currentQuestionIndex
-                            Box(
-                                modifier = Modifier
-                                    .size(32.dp)
-                                    .clip(CircleShape)
-                                    .background(if (isSelected) GreenPrimary else Color.White)
-                                    .border(1.dp, if (isSelected) GreenPrimary else Color.LightGray, CircleShape)
-                                    .clickable {
-                                        currentQuestionIndex = index
-                                        viewModel.clearRecordedResponse()
-                                    },
-                                contentAlignment = Alignment.Center
-                            ) {
-                                Text(
-                                    text = (index + 1).toString(),
-                                    fontSize = 12.sp,
-                                    fontWeight = FontWeight.Bold,
-                                    color = if (isSelected) Color.White else Color.Gray
-                                )
+
+                    Spacer(modifier = Modifier.height(20.dp))
+
+                    PracticeSection(
+                        currentQuestion = currentQuestionObj?.arabic ?: "",
+                        translation = if (lang == "en") currentQuestionObj?.english ?: "" else currentQuestionObj?.indonesian ?: "",
+                        formatArabic = ::formatArabic,
+                        onListen = {
+                            currentQuestionObj?.let { viewModel.playVoice(it.arabic) }
+                        },
+                        onMicClick = {
+                            if (isRecording) {
+                                stopRecording()
+                                tempAudioFile?.let { file ->
+                                    viewModel.setRecordedVoice(file.absolutePath)
+                                    currentQuestionObj?.let { q ->
+                                        viewModel.transcribeAudio(file.absolutePath, q.arabic, module.title, module.content)
+                                    }
+                                }
+                            } else {
+                                permissionLauncher.launch(Manifest.permission.RECORD_AUDIO)
                             }
-                        }
-                    }
-
-                    Spacer(modifier = Modifier.height(16.dp))
-
-                    currentQuestionObj?.let { qObj ->
-                        val cleanQ = cleanQuestion(qObj.arabic)
-                        PracticeSection(
-                            currentQuestion = cleanQ,
-                            translation = if (lang == "en") qObj.english else qObj.indonesian,
-                            formatArabic = ::formatArabic,
-                            onListen = { viewModel.playVoice(cleanQ) },
-                            onMicClick = { permissionLauncher.launch(Manifest.permission.RECORD_AUDIO) },
-                            isPlaying = currentlyPlaying == cleanQ,
-                            lang = lang,
-                            userVoicePath = userVoicePath,
-                            avatarPath = avatarPath,
-                            isPlayingUserVoice = isPlayingUserVoice,
-                            userVoicePosition = userVoicePosition,
-                            userVoiceDuration = userVoiceDuration,
-                            userWaveform = userWaveform,
-                            onPlayUserVoice = { viewModel.playUserVoice() },
-                            onSeekUserVoice = { viewModel.seekUserVoice(it) },
-                            onRefreshRecord = { viewModel.clearRecordedResponse() }
-                        )
-                    }
+                        },
+                        isPlaying = currentlyPlaying == currentQuestionObj?.arabic,
+                        lang = lang,
+                        userVoicePath = userVoicePath,
+                        avatarPath = avatarPath,
+                        isPlayingUserVoice = isPlayingUserVoice,
+                        userVoicePosition = userVoicePosition,
+                        userVoiceDuration = userVoiceDuration,
+                        userWaveform = userWaveform,
+                        onPlayUserVoice = { viewModel.playUserVoice() },
+                        onSeekUserVoice = { viewModel.seekUserVoice(it) },
+                        onRefreshRecord = { viewModel.clearRecordedResponse() },
+                        isRecording = isRecording,
+                        isTranscribing = isTranscribing,
+                        recordingTime = recordingTime
+                    )
 
                     Spacer(modifier = Modifier.height(24.dp))
 
-                    if (isAiLoading) {
-                        Box(modifier = Modifier.fillMaxWidth().padding(16.dp), contentAlignment = Alignment.Center) {
+                    if (isAiLoading || isTranscribing) {
+                        Box(modifier = Modifier.fillMaxWidth().padding(24.dp), contentAlignment = Alignment.Center) {
                             CircularProgressIndicator(color = GreenPrimary)
                         }
+                    } else if (aiFeedback != null) {
+                        AIFeedbackSection(lang, aiFeedback!!)
                     } else {
-                        aiFeedback?.let { feedback ->
-                            AIFeedbackSection(lang, feedback)
-                        } ?: AIFeedbackPlaceholderSection(lang)
+                        AIFeedbackPlaceholderSection(lang)
                     }
                 }
 
-                // Floating Navigation Buttons
-                Box(
+                // Bottom Nav (Previous / Next)
+                Surface(
                     modifier = Modifier
-                        .align(Alignment.BottomEnd)
-                        .padding(bottom = 32.dp, end = 20.dp)
+                        .align(Alignment.BottomCenter)
+                        .fillMaxWidth(),
+                    color = Color.White,
+                    shadowElevation = 8.dp
                 ) {
                     Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(12.dp)
+                        modifier = Modifier
+                            .padding(horizontal = 20.dp, vertical = 16.dp)
+                            .navigationBarsPadding(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
                     ) {
-                        if (currentQuestionIndex > 0) {
-                            SmallFloatingActionButton(
-                                onClick = {
-                                    currentQuestionIndex--
-                                    viewModel.clearRecordedResponse()
-                                },
-                                containerColor = Color.White,
-                                contentColor = GreenPrimary,
-                                shape = CircleShape,
-                                elevation = FloatingActionButtonDefaults.elevation(defaultElevation = 4.dp)
-                            ) {
-                                Icon(Icons.Default.ChevronLeft, contentDescription = "Previous")
-                            }
+                        TextButton(
+                            onClick = { if (currentQuestionIndex > 0) currentQuestionIndex-- },
+                            enabled = currentQuestionIndex > 0
+                        ) {
+                            Icon(Icons.Default.ArrowBack, contentDescription = null, modifier = Modifier.size(16.dp))
+                            Spacer(modifier = Modifier.width(4.dp))
+                            Text(Localization.getString("previous", lang))
                         }
 
-                        if (currentQuestionIndex < questions.size - 1) {
-                            ExtendedFloatingActionButton(
-                                onClick = {
-                                    currentQuestionIndex++
-                                    viewModel.clearRecordedResponse()
-                                },
-                                containerColor = GreenPrimary,
-                                contentColor = Color.White,
-                                shape = RoundedCornerShape(16.dp),
-                                elevation = FloatingActionButtonDefaults.elevation(defaultElevation = 6.dp),
-                                text = { Text(text = Localization.getString("next", lang), fontWeight = FontWeight.Bold) },
-                                icon = { Icon(Icons.Default.ChevronRight, contentDescription = "Next") }
+                        Surface(
+                            color = GreenPrimary.copy(alpha = 0.1f),
+                            shape = RoundedCornerShape(12.dp)
+                        ) {
+                            Text(
+                                text = "${currentQuestionIndex + 1}/${questions.size}",
+                                modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
+                                color = GreenPrimary,
+                                fontWeight = FontWeight.Bold,
+                                fontSize = 14.sp
                             )
+                        }
+
+                        Button(
+                            onClick = { if (currentQuestionIndex < questions.size - 1) currentQuestionIndex++ },
+                            enabled = currentQuestionIndex < questions.size - 1,
+                            colors = ButtonDefaults.buttonColors(containerColor = GreenPrimary),
+                            shape = RoundedCornerShape(12.dp)
+                        ) {
+                            Text(Localization.getString("next", lang), color = Color.White)
+                            Spacer(modifier = Modifier.width(4.dp))
+                            Icon(Icons.Default.ArrowForward, contentDescription = null, modifier = Modifier.size(16.dp), tint = Color.White)
                         }
                     }
                 }
@@ -432,7 +394,10 @@ fun PracticeSection(
     userWaveform: List<Float>,
     onPlayUserVoice: () -> Unit,
     onSeekUserVoice: (Float) -> Unit,
-    onRefreshRecord: () -> Unit
+    onRefreshRecord: () -> Unit,
+    isRecording: Boolean,
+    isTranscribing: Boolean,
+    recordingTime: Int
 ) {
     Surface(
         modifier = Modifier
@@ -500,10 +465,10 @@ fun PracticeSection(
                 Surface(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .clickable { onMicClick() },
-                    color = Color(0xFFFEFCE8),
+                        .clickable(enabled = !isTranscribing) { onMicClick() },
+                    color = if (isRecording) Color(0xFFFEF2F2) else Color(0xFFFEFCE8),
                     shape = RoundedCornerShape(16.dp),
-                    border = BorderStroke(1.dp, Color(0xFFFEF08A))
+                    border = BorderStroke(1.dp, if (isRecording) Color(0xFFFECACA) else Color(0xFFFEF08A))
                 ) {
                     Column(
                         modifier = Modifier.padding(16.dp),
@@ -512,13 +477,28 @@ fun PracticeSection(
                         Box(
                             modifier = Modifier
                                 .size(40.dp)
-                                .background(GreenPrimary, CircleShape),
+                                .background(if (isRecording) Color.Red else GreenPrimary, CircleShape),
                             contentAlignment = Alignment.Center
                         ) {
-                            Icon(Icons.Default.Mic, contentDescription = null, tint = Color.White)
+                            Icon(
+                                if (isRecording) Icons.Default.Stop else Icons.Default.Mic, 
+                                contentDescription = null, 
+                                tint = Color.White
+                            )
                         }
                         Spacer(modifier = Modifier.height(8.dp))
-                        Text(Localization.getString("answer_voice", lang), fontSize = 12.sp, color = GreenPrimary, fontWeight = FontWeight.Bold)
+                        Text(
+                            if (isRecording) {
+                                String.format(Locale.getDefault(), "%02d:%02d - Stop Recording", recordingTime / 60, recordingTime % 60)
+                            } else if (isTranscribing) {
+                                "Mengenali suara..."
+                            } else {
+                                Localization.getString("answer_voice", lang)
+                            },
+                            fontSize = 12.sp, 
+                            color = if (isRecording) Color.Red else GreenPrimary, 
+                            fontWeight = FontWeight.Bold
+                        )
                     }
                 }
             } else {
@@ -618,6 +598,5 @@ fun PracticeSection(
                 }
             }
         }
-
     }
 }

@@ -2,9 +2,9 @@ package com.fadhil.taba.ui.dashboard.mufrodat
 
 import android.Manifest
 import android.app.Activity
-import android.content.Intent
 import android.content.pm.ActivityInfo
-import android.speech.RecognizerIntent
+import android.media.MediaRecorder
+import android.util.Log
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.Image
@@ -41,6 +41,9 @@ import com.fadhil.taba.data.settings.AppSettingsStore
 import com.fadhil.taba.data.settings.Localization
 import com.fadhil.taba.ui.dashboard.TabaHeader
 import com.fadhil.taba.ui.dashboard.materi.removeHarakat
+import kotlinx.coroutines.delay
+import java.io.File
+import java.util.Locale
 
 @Composable
 fun MufrodatScreen(
@@ -57,6 +60,7 @@ fun MufrodatScreen(
     
     val aiFeedback by viewModel.aiFeedback.collectAsState()
     val isAiLoading by viewModel.isLoading.collectAsState()
+    val isTranscribing by viewModel.isTranscribing.collectAsState()
     val currentlyPlaying by viewModel.currentlyPlayingText.collectAsState()
 
     val playbackPosition by viewModel.playbackPosition.collectAsState()
@@ -78,6 +82,43 @@ fun MufrodatScreen(
     
     var showSettingsSheet by remember { mutableStateOf(false) }
 
+    // Recording Logic
+    var recorder by remember { mutableStateOf<MediaRecorder?>(null) }
+    var tempAudioFile by remember { mutableStateOf<File?>(null) }
+    var isRecording by remember { mutableStateOf(false) }
+    var recordingTime by remember { mutableIntStateOf(0) }
+
+    LaunchedEffect(isRecording) {
+        if (isRecording) {
+            recordingTime = 0
+            while (isRecording) {
+                delay(1000L)
+                recordingTime++
+            }
+        }
+    }
+
+    fun stopRecording(discardFile: Boolean = false) {
+        if (isRecording) {
+            try {
+                recorder?.stop()
+            } catch (e: Exception) {
+                Log.w("MufrodatScreen", "Recorder stop skipped", e)
+            }
+        }
+        try {
+            recorder?.release()
+        } catch (e: Exception) {
+            Log.w("MufrodatScreen", "Recorder release skipped", e)
+        }
+        recorder = null
+        isRecording = false
+        if (discardFile) {
+            tempAudioFile?.takeIf { it.exists() }?.delete()
+            tempAudioFile = null
+        }
+    }
+
     LaunchedEffect(settings.audioSpeed, settings.voiceGender) {
         viewModel.updateTtsSettings(settings.audioSpeed, settings.voiceGender)
     }
@@ -92,16 +133,8 @@ fun MufrodatScreen(
 
     DisposableEffect(Unit) {
         onDispose {
+            stopRecording(discardFile = true)
             activity?.requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_PORTRAIT
-        }
-    }
-
-    val speechLauncher = rememberLauncherForActivityResult(
-        contract = ActivityResultContracts.StartActivityForResult()
-    ) { result ->
-        if (result.resultCode == Activity.RESULT_OK) {
-            val spokenText = result.data?.getStringArrayListExtra(RecognizerIntent.EXTRA_RESULTS)?.get(0) ?: ""
-            viewModel.checkPronunciation(currentVocab.arabic, spokenText)
         }
     }
 
@@ -109,11 +142,22 @@ fun MufrodatScreen(
         contract = ActivityResultContracts.RequestPermission()
     ) { isGranted ->
         if (isGranted) {
-            val intent = Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH).apply {
-                putExtra(RecognizerIntent.EXTRA_LANGUAGE_MODEL, RecognizerIntent.LANGUAGE_MODEL_FREE_FORM)
-                putExtra(RecognizerIntent.EXTRA_LANGUAGE, "ar-SA")
+            val file = File(context.cacheDir, "mufrodat_rec_${System.currentTimeMillis()}.m4a")
+            tempAudioFile = file
+            try {
+                recorder = MediaRecorder().apply {
+                    setAudioSource(MediaRecorder.AudioSource.MIC)
+                    setOutputFormat(MediaRecorder.OutputFormat.MPEG_4)
+                    setAudioEncoder(MediaRecorder.AudioEncoder.AAC)
+                    setOutputFile(file.absolutePath)
+                    prepare()
+                    start()
+                }
+                isRecording = true
+            } catch (e: Exception) {
+                stopRecording(discardFile = true)
+                Log.e("MufrodatScreen", "Failed to start recording", e)
             }
-            speechLauncher.launch(intent)
         }
     }
 
@@ -180,7 +224,14 @@ fun MufrodatScreen(
                         viewModel.playVoice(currentVocab.arabic)
                     },
                     onSpeakClick = {
-                        permissionLauncher.launch(Manifest.permission.RECORD_AUDIO)
+                        if (isRecording) {
+                            stopRecording()
+                            tempAudioFile?.let { file ->
+                                viewModel.transcribeAudio(file.absolutePath, currentVocab.arabic)
+                            }
+                        } else {
+                            permissionLauncher.launch(Manifest.permission.RECORD_AUDIO)
+                        }
                     },
                     onStarClick = {
                         AppSettingsStore.toggleStar(context, module.id, currentVocab.arabic)
@@ -197,11 +248,14 @@ fun MufrodatScreen(
                     isPlaying = currentlyPlaying == currentVocab.arabic,
                     playbackPosition = playbackPosition,
                     playbackDuration = playbackDuration,
-                    waveformAmplitudes = waveformAmplitudes
+                    waveformAmplitudes = waveformAmplitudes,
+                    isRecording = isRecording,
+                    isTranscribing = isTranscribing,
+                    recordingTime = recordingTime
                 )
                 Spacer(modifier = Modifier.height(24.dp))
                 
-                if (isAiLoading) {
+                if (isAiLoading || isTranscribing) {
                     Box(modifier = Modifier.fillMaxWidth().padding(16.dp), contentAlignment = Alignment.Center) {
                         CircularProgressIndicator(color = GreenPrimary)
                     }
@@ -259,7 +313,10 @@ fun MufrodatPracticeCard(
     isPlaying: Boolean = false,
     playbackPosition: Float = 0f,
     playbackDuration: Float = 0f,
-    waveformAmplitudes: List<Float> = emptyList()
+    waveformAmplitudes: List<Float> = emptyList(),
+    isRecording: Boolean = false,
+    isTranscribing: Boolean = false,
+    recordingTime: Int = 0
 ) {
     Surface(
         modifier = Modifier.padding(horizontal = 16.dp).fillMaxWidth(),
@@ -320,15 +377,26 @@ fun MufrodatPracticeCard(
                 Button(
                     onClick = onSpeakClick,
                     modifier = Modifier.weight(1f).height(48.dp),
-                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFF0F2EE)),
+                    colors = ButtonDefaults.buttonColors(containerColor = if (isRecording) Color.Red.copy(alpha = 0.1f) else Color(0xFFF0F2EE)),
                     shape = RoundedCornerShape(12.dp),
                     contentPadding = PaddingValues(horizontal = 4.dp)
                 ) {
-                    Icon(Icons.Default.Mic, contentDescription = null, tint = GreenPrimary, modifier = Modifier.size(18.dp))
+                    Icon(
+                        imageVector = if (isRecording) Icons.Default.Stop else Icons.Default.Mic, 
+                        contentDescription = null, 
+                        tint = if (isRecording) Color.Red else GreenPrimary, 
+                        modifier = Modifier.size(18.dp)
+                    )
                     Spacer(modifier = Modifier.width(4.dp))
                     Text(
-                        text = Localization.getString("speak", lang),
-                        color = GreenPrimary,
+                        text = if (isRecording) {
+                            String.format(Locale.getDefault(), "%02d:%02d", recordingTime / 60, recordingTime % 60)
+                        } else if (isTranscribing) {
+                            "..."
+                        } else {
+                            Localization.getString("speak", lang)
+                        },
+                        color = if (isRecording) Color.Red else GreenPrimary,
                         fontSize = 11.sp,
                         maxLines = 1
                     )

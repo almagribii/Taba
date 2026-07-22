@@ -1,31 +1,37 @@
 package com.fadhil.taba.ui.dashboard.help
 
-import android.content.Context
+import android.widget.TextView
+import androidx.compose.animation.animateContentSize
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.ArrowBack
-import androidx.compose.material.icons.filled.BugReport
-import androidx.compose.material.icons.filled.ContactSupport
-import androidx.compose.material.icons.filled.HelpOutline
-import androidx.compose.material.icons.filled.Feedback
+import androidx.compose.material.icons.automirrored.filled.Login
+import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
-import androidx.compose.runtime.Composable
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
-import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.viewinterop.AndroidView
+import androidx.core.graphics.toColorInt
+import androidx.core.text.HtmlCompat
 import com.fadhil.taba.ui.theme.GoldAccent
 import com.fadhil.taba.ui.theme.GreenPrimary
+
+data class HelpTopic(
+    val title: String,
+    val htmlContent: String,
+    val icon: ImageVector
+)
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -35,122 +41,201 @@ fun HelpScreen(
     lang: String,
     onBack: () -> Unit
 ) {
-    val ctx = LocalContext.current
+    val helpTopics = remember {
+        listOf(
+            HelpTopic(
+                title = "Memulai",
+                htmlContent = "1. Masuk dengan akun <b>Google</b> pada layar Welcome.<br>2. Setelah berhasil masuk, Anda akan diarahkan ke <b>Beranda</b>.",
+                icon = Icons.AutoMirrored.Filled.Login
+            ),
+            HelpTopic(
+                title = "Navigasi Utama",
+                htmlContent = "• <b>Beranda</b>: Ikhtisar materi dan banner.<br>• <b>Materi</b>: Daftar modul pelajaran.<br>• <b>Tanya AI</b>: Bertanya atau berlatih percakapan interaktif.<br>• <b>Pengaturan</b>: Mengubah preferensi dan bantuan.",
+                icon = Icons.Default.Navigation
+            ),
+            HelpTopic(
+                title = "Fitur Penting",
+                htmlContent = "• <b>Latihan Mufrodat</b>: Pelajaran kosakata interaktif.<br>• <b>Al-Hiwar</b>: Latihan percakapan berbasis AI.<br>• <b>Pengaturan Suara</b>: Atur kecepatan audio di halaman Pengaturan.",
+                icon = Icons.Default.Star
+            ),
+            HelpTopic(
+                title = "Masalah Umum",
+                htmlContent = "• <b>Tidak bisa masuk</b>: Periksa koneksi internet.<br>• <b>Audio tidak berbunyi</b>: Periksa volume perangkat.<br>• <b>AI tidak merespons</b>: Pastikan internet stabil.",
+                icon = Icons.Default.ErrorOutline
+            ),
+            HelpTopic(
+                title = "Beri Masukan",
+                htmlContent = "Kirimkan saran atau laporan bug melalui email developer yang tertera di halaman <b>Tentang Aplikasi</b>.",
+                icon = Icons.Default.Feedback
+            )
+        )
+    }
 
-    Column(modifier = Modifier.fillMaxSize()) {
-        Box(modifier = Modifier
-            .fillMaxWidth()
-            .height(160.dp)
-            .background(
-                brush = Brush.verticalGradient(listOf(GreenPrimary.copy(alpha = 0.95f), GoldAccent.copy(alpha = 0.15f)))
-            )) {
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(Color(0xFFF8F9FA))
+    ) {
+        // Hero Header - multi-tone with angled accent on right, no image
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(150.dp)
+                .background(
+                    brush = Brush.horizontalGradient(
+                        colors = listOf(GreenPrimary, GreenPrimary.copy(alpha = 0.9f))
+                    )
+                )
+        ) {
+            // Angled accent on right using Canvas (creates chevron/trapezoid)
+            androidx.compose.foundation.Canvas(modifier = Modifier
+                .fillMaxHeight()
+                .width(120.dp)
+                .align(Alignment.CenterEnd)) {
+                val w = size.width
+                val h = size.height
+                val p = androidx.compose.ui.graphics.Path().apply {
+                    moveTo(0f, 0f)
+                    lineTo(w * 0.5f, 0f)
+                    lineTo(w, h / 2f)
+                    lineTo(w * 0.5f, h)
+                    lineTo(0f, h)
+                    close()
+                }
+                drawPath(path = p, color = GreenPrimary.copy(alpha = 0.35f))
+            }
+
             Row(modifier = Modifier
                 .fillMaxWidth()
-                .padding(horizontal = 12.dp, vertical = 20.dp),
+                .padding(horizontal = 12.dp, vertical = 12.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                IconButton(onClick = onBack) {
-                    Icon(Icons.Default.ArrowBack, contentDescription = "Back", tint = Color.White)
+                // back pill
+                Surface(shape = RoundedCornerShape(10.dp), color = Color.White.copy(alpha = 0.14f), modifier = Modifier.size(40.dp)) {
+                    Box(contentAlignment = Alignment.Center) {
+                        IconButton(onClick = onBack, modifier = Modifier.size(40.dp)) {
+                            Icon(Icons.Default.ArrowBack, contentDescription = "Back", tint = Color.White)
+                        }
+                    }
                 }
-                Spacer(modifier = Modifier.width(8.dp))
-                Column {
-                    Text(text = "Bantuan & Panduan", color = Color.White, fontSize = 20.sp, fontWeight = FontWeight.Bold)
-                    Text(text = "Butuh bantuan? Temukan solusi cepat di sini.", color = Color.White.copy(alpha = 0.9f), fontSize = 13.sp)
+
+                Spacer(modifier = Modifier.width(12.dp))
+
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(text = "Bantuan & Panduan", color = Color.White, fontSize = 20.sp, fontWeight = FontWeight.SemiBold)
+                    Text(text = "Temukan solusi cepat untuk kendala Anda", color = Color.White.copy(alpha = 0.9f), fontSize = 12.sp)
+                }
+
+                // small label on right that matches hue
+                Box(modifier = Modifier
+                    .clip(RoundedCornerShape(topStart = 12.dp, bottomStart = 12.dp))
+                    .background(GoldAccent.copy(alpha = 0.12f))
+                    .padding(horizontal = 12.dp, vertical = 8.dp)
+                    .align(Alignment.CenterVertically)) {
+                    Text(text = "Panduan", color = Color.White.copy(alpha = 0.95f), fontSize = 12.sp)
                 }
             }
         }
 
-        Column(modifier = Modifier
-            .fillMaxSize()
-            .offset(y = (-28).dp)
-            .verticalScroll(rememberScrollState())
-            .padding(horizontal = 16.dp)) {
-
-            // Intro card overlapping header
-            Card(
-                shape = RoundedCornerShape(16.dp),
-                modifier = Modifier.fillMaxWidth(),
-                elevation = CardDefaults.cardElevation(defaultElevation = 8.dp)
-            ) {
-                Row(modifier = Modifier.padding(16.dp), verticalAlignment = Alignment.CenterVertically) {
-                    val resId = getDrawableIdIfExists(ctx, "help_illustration")
-                    if (resId != 0) {
-                        androidx.compose.foundation.Image(painter = painterResource(id = resId), contentDescription = null, modifier = Modifier.size(80.dp))
-                    }
-                    Column(modifier = Modifier.padding(start = 12.dp)) {
-                        Text(text = "Mulai Cepat", fontWeight = FontWeight.Bold, fontSize = 16.sp, color = GreenPrimary)
-                        Spacer(modifier = Modifier.height(6.dp))
-                        Text(text = "Masuk → Beranda → Materi → Latihan. Gunakan Tanya AI untuk latihan bicara.", color = Color(0xFF4B5563))
-                    }
-                }
-            }
-
-            Spacer(modifier = Modifier.height(12.dp))
-
-            QuickFeatureCard(icon = Icons.Default.HelpOutline, title = "Panduan Navigasi", subtitle = "Cara menggunakan menu dan modul")
-            QuickFeatureCard(icon = Icons.Default.ContactSupport, title = "Hubungi Dukungan", subtitle = "Laporkan masalah atau minta bantuan")
-            QuickFeatureCard(icon = Icons.Default.BugReport, title = "Laporkan Bug", subtitle = "Laporkan gangguan atau crash")
-            QuickFeatureCard(icon = Icons.Default.Feedback, title = "Kirim Masukan", subtitle = "Usulan fitur atau perbaikan")
-
-            Spacer(modifier = Modifier.height(8.dp))
-
-            SectionCard(title = "Memulai") {
-                Text(text = "1. Masuk dengan Google.\n2. Akses Beranda untuk melihat materi.", color = Color(0xFF374151))
-            }
-
-            SectionCard(title = "Navigasi Utama") {
-                Text(text = "Beranda, Materi, Tanya AI, Pengaturan — ketuk ikon di bawah untuk berpindah.", color = Color(0xFF374151))
-            }
-
-            SectionCard(title = "Fitur Penting") {
-                Text(text = "Latihan Mufrodat, Al-Hiwar (percakapan AI), Pengaturan audio dan kecepatan.", color = Color(0xFF374151))
-            }
-
-            SectionCard(title = "Solusi Cepat") {
-                Text(text = "Tidak bisa masuk: Periksa internet. Audio mati: cek volume/perijinan. AI tidak merespons: periksa koneksi.", color = Color(0xFF374151))
+        // Content
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .offset(y = (-30).dp)
+                .verticalScroll(rememberScrollState())
+                .padding(horizontal = 16.dp)
+        ) {
+            helpTopics.forEach { topic ->
+                HelpTopicCard(topic)
+                Spacer(modifier = Modifier.height(12.dp))
             }
 
             Spacer(modifier = Modifier.height(16.dp))
-
-            Button(onClick = onBack, modifier = Modifier.fillMaxWidth(), colors = ButtonDefaults.buttonColors(containerColor = GreenPrimary)) {
-                Text(text = "Kembali", color = Color.White)
+            
+            Button(
+                onClick = onBack,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(56.dp),
+                shape = RoundedCornerShape(12.dp),
+                colors = ButtonDefaults.buttonColors(containerColor = GreenPrimary)
+            ) {
+                Text(text = "Kembali ke Pengaturan", fontWeight = FontWeight.Bold)
             }
-
-            Spacer(modifier = Modifier.height(28.dp))
+            
+            Spacer(modifier = Modifier.height(40.dp))
         }
     }
 }
 
 @Composable
-private fun QuickFeatureCard(icon: ImageVector, title: String, subtitle: String) {
-    Card(shape = RoundedCornerShape(12.dp), modifier = Modifier
-        .fillMaxWidth()
-        .padding(vertical = 6.dp), elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)) {
-        Row(modifier = Modifier.padding(12.dp), verticalAlignment = Alignment.CenterVertically) {
-            Surface(shape = RoundedCornerShape(8.dp), color = GreenPrimary.copy(alpha = 0.1f), modifier = Modifier.size(44.dp)) {
-                Box(contentAlignment = Alignment.Center) { Icon(icon, contentDescription = null, tint = GreenPrimary, modifier = Modifier.size(22.dp)) }
+fun HelpTopicCard(topic: HelpTopic) {
+    var expanded by remember { mutableStateOf(false) }
+
+    ElevatedCard(
+        modifier = Modifier
+            .fillMaxWidth()
+            .animateContentSize()
+            .clickable { expanded = !expanded },
+        shape = RoundedCornerShape(16.dp),
+        colors = CardDefaults.elevatedCardColors(containerColor = Color.White)
+    ) {
+        Column(modifier = Modifier.padding(16.dp)) {
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Surface(
+                    shape = RoundedCornerShape(12.dp),
+                    color = GreenPrimary.copy(alpha = 0.05f),
+                    modifier = Modifier.size(40.dp)
+                ) {
+                    Box(contentAlignment = Alignment.Center) {
+                        Icon(
+                            topic.icon,
+                            contentDescription = null,
+                            tint = GreenPrimary,
+                            modifier = Modifier.size(20.dp)
+                        )
+                    }
+                }
+                Spacer(modifier = Modifier.width(16.dp))
+                Text(
+                    text = topic.title,
+                    fontSize = 16.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = Color(0xFF1F2937),
+                    modifier = Modifier.weight(1f)
+                )
+                Icon(
+                    imageVector = if (expanded) Icons.Default.ExpandLess else Icons.Default.ExpandMore,
+                    contentDescription = null,
+                    tint = Color.Gray
+                )
             }
-            Column(modifier = Modifier.padding(start = 12.dp)) {
-                Text(text = title, fontWeight = FontWeight.SemiBold, color = Color(0xFF0F172A))
-                Text(text = subtitle, color = Color(0xFF6B7280), fontSize = 13.sp)
+
+            if (expanded) {
+                Spacer(modifier = Modifier.height(12.dp))
+                HorizontalDivider(color = Color(0xFFF3F4F6))
+                Spacer(modifier = Modifier.height(12.dp))
+                HtmlText(html = topic.htmlContent)
             }
         }
     }
 }
 
 @Composable
-private fun SectionCard(title: String, content: @Composable ColumnScope.() -> Unit) {
-    Card(shape = RoundedCornerShape(12.dp), modifier = Modifier
-        .fillMaxWidth()
-        .padding(vertical = 6.dp), elevation = CardDefaults.cardElevation(defaultElevation = 3.dp)) {
-        Column(modifier = Modifier.padding(14.dp)) {
-            Text(text = title, fontWeight = FontWeight.Bold, color = GreenPrimary)
-            Spacer(modifier = Modifier.height(6.dp))
-            content()
+fun HtmlText(html: String) {
+    AndroidView(
+        factory = { context ->
+            TextView(context).apply {
+                textSize = 14f
+                setTextColor("#4B5563".toColorInt())
+                setLineSpacing(8f, 1f)
+            }
+        },
+        update = { textView ->
+            textView.text = HtmlCompat.fromHtml(html, HtmlCompat.FROM_HTML_MODE_LEGACY)
         }
-    }
-}
-
-private fun getDrawableIdIfExists(ctx: Context, name: String): Int {
-    return ctx.resources.getIdentifier(name, "drawable", ctx.packageName)
+    )
 }

@@ -221,7 +221,7 @@ fun HiwarScreen(
                         )
                     }
 
-                    Spacer(modifier = Modifier.height(20.dp))
+                    Spacer(modifier = Modifier.height(8.dp))
 
                     PracticeSection(
                         currentQuestion = currentQuestionObj?.arabic ?: "",
@@ -259,7 +259,7 @@ fun HiwarScreen(
                         recordingTime = recordingTime
                     )
 
-                    Spacer(modifier = Modifier.height(24.dp))
+                    Spacer(modifier = Modifier.height(16.dp))
 
                     if (isAiLoading || isTranscribing) {
                         Box(modifier = Modifier.fillMaxWidth().padding(24.dp), contentAlignment = Alignment.Center) {
@@ -420,7 +420,7 @@ fun PracticeSection(
                 ) {
                     Surface(color = Color(0xFFF0FDF4), shape = CircleShape, modifier = Modifier.size(40.dp)) {
                         Box(contentAlignment = Alignment.Center) {
-                            Image(painter = painterResource(id = R.drawable.taba), contentDescription = null, modifier = Modifier.fillMaxSize())
+                            Image(painter = painterResource(id = R.drawable.tabaa), contentDescription = null, modifier = Modifier.fillMaxSize())
                         }
                     }
                     Spacer(modifier = Modifier.height(4.dp))

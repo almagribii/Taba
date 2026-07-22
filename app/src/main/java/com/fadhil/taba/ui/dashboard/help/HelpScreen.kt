@@ -44,15 +44,19 @@ fun HelpScreen(
             .background(
                 brush = Brush.verticalGradient(listOf(GreenPrimary.copy(alpha = 0.95f), GoldAccent.copy(alpha = 0.15f)))
             )) {
-            IconButton(onClick = onBack, modifier = Modifier.padding(12.dp)) {
-                Icon(Icons.Default.ArrowBack, contentDescription = "Back", tint = Color.White)
-            }
-
-            Column(modifier = Modifier
-                .align(Alignment.CenterStart)
-                .padding(start = 20.dp)) {
-                Text(text = "Bantuan & Panduan", color = Color.White, fontSize = 20.sp, fontWeight = FontWeight.Bold)
-                Text(text = "Butuh bantuan? Temukan solusi cepat di sini.", color = Color.White.copy(alpha = 0.9f), fontSize = 13.sp)
+            Row(modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 12.dp, vertical = 20.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                IconButton(onClick = onBack) {
+                    Icon(Icons.Default.ArrowBack, contentDescription = "Back", tint = Color.White)
+                }
+                Spacer(modifier = Modifier.width(8.dp))
+                Column {
+                    Text(text = "Bantuan & Panduan", color = Color.White, fontSize = 20.sp, fontWeight = FontWeight.Bold)
+                    Text(text = "Butuh bantuan? Temukan solusi cepat di sini.", color = Color.White.copy(alpha = 0.9f), fontSize = 13.sp)
+                }
             }
         }
 

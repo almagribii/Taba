@@ -77,17 +77,36 @@ fun HelpScreen(
             .fillMaxSize()
             .background(Color(0xFFF8F9FA))
     ) {
-        // Hero Header - simplified: arrow + two-line title
+        // Hero Header - solid green band with rounded bottom, content separated below
         Box(
             modifier = Modifier
                 .fillMaxWidth()
                 .height(140.dp)
+                .clip(RoundedCornerShape(bottomStart = 20.dp, bottomEnd = 20.dp))
                 .background(
                     brush = Brush.horizontalGradient(
-                        colors = listOf(GreenPrimary, GreenPrimary.copy(alpha = 0.9f))
+                        colors = listOf(GreenPrimary, GreenPrimary.copy(alpha = 0.95f))
                     )
                 )
         ) {
+            // subtle angled accent on right
+            androidx.compose.foundation.Canvas(modifier = Modifier
+                .fillMaxHeight()
+                .width(100.dp)
+                .align(Alignment.CenterEnd)) {
+                val w = size.width
+                val h = size.height
+                val p = androidx.compose.ui.graphics.Path().apply {
+                    moveTo(0f, 0f)
+                    lineTo(w * 0.55f, 0f)
+                    lineTo(w, h / 2f)
+                    lineTo(w * 0.55f, h)
+                    lineTo(0f, h)
+                    close()
+                }
+                drawPath(path = p, color = GreenPrimary.copy(alpha = 0.28f))
+            }
+
             Row(modifier = Modifier
                 .fillMaxWidth()
                 .padding(horizontal = 12.dp, vertical = 12.dp),
@@ -106,13 +125,12 @@ fun HelpScreen(
             }
         }
 
-        // Content
+        // Content — placed below header, separated by spacing and white background
         Column(
             modifier = Modifier
                 .fillMaxSize()
-                .offset(y = (-30).dp)
                 .verticalScroll(rememberScrollState())
-                .padding(horizontal = 16.dp)
+                .padding(horizontal = 16.dp, vertical = 18.dp)
         ) {
             helpTopics.forEach { topic ->
                 HelpTopicCard(topic)

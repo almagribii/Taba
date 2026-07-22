@@ -75,13 +75,13 @@ fun HelpScreen(
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .background(Color(0xFFF8F9FA))
+            .background(GreenPrimary)
     ) {
-        // Hero Header - solid green band with rounded bottom, content separated below
+        // Hero Header - solid green band with rounded bottom
         Box(
             modifier = Modifier
                 .fillMaxWidth()
-                .height(140.dp)
+                .height(110.dp)
                 .clip(RoundedCornerShape(bottomStart = 20.dp, bottomEnd = 20.dp))
                 .background(
                     brush = Brush.horizontalGradient(
@@ -125,32 +125,40 @@ fun HelpScreen(
             }
         }
 
-        // Content — placed below header, separated by spacing and white background
-        Column(
+        // White content Surface overlapping header (floating)
+        Surface(
             modifier = Modifier
                 .fillMaxSize()
-                .verticalScroll(rememberScrollState())
-                .padding(horizontal = 16.dp, vertical = 18.dp)
+                .offset(y = (-24).dp),
+            color = Color(0xFFF8F9FA),
+            shape = RoundedCornerShape(topStart = 20.dp, topEnd = 20.dp)
         ) {
-            helpTopics.forEach { topic ->
-                HelpTopicCard(topic)
-                Spacer(modifier = Modifier.height(12.dp))
-            }
-
-            Spacer(modifier = Modifier.height(16.dp))
-            
-            Button(
-                onClick = onBack,
+            Column(
                 modifier = Modifier
-                    .fillMaxWidth()
-                    .height(56.dp),
-                shape = RoundedCornerShape(12.dp),
-                colors = ButtonDefaults.buttonColors(containerColor = GreenPrimary)
+                    .fillMaxSize()
+                    .verticalScroll(rememberScrollState())
+                    .padding(horizontal = 16.dp, vertical = 18.dp)
             ) {
-                Text(text = "Kembali ke Pengaturan", fontWeight = FontWeight.Bold)
+                helpTopics.forEach { topic ->
+                    HelpTopicCard(topic)
+                    Spacer(modifier = Modifier.height(12.dp))
+                }
+
+                Spacer(modifier = Modifier.height(16.dp))
+                
+                Button(
+                    onClick = onBack,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(56.dp),
+                    shape = RoundedCornerShape(12.dp),
+                    colors = ButtonDefaults.buttonColors(containerColor = GreenPrimary)
+                ) {
+                    Text(text = "Kembali ke Pengaturan", fontWeight = FontWeight.Bold)
+                }
+                
+                Spacer(modifier = Modifier.height(40.dp))
             }
-            
-            Spacer(modifier = Modifier.height(40.dp))
         }
     }
 }

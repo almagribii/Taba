@@ -1,11 +1,14 @@
 package com.fadhil.taba.ui.dashboard.hiwar
 
 import android.app.Application
+import android.media.MediaMetadataRetriever
+import android.media.MediaPlayer
 import android.speech.tts.TextToSpeech
 import android.util.Log
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.fadhil.taba.BuildConfig
+import com.fadhil.taba.data.settings.Localization
 import com.fadhil.taba.ui.dashboard.mufrodat.AIFeedbackData
 import io.ktor.client.*
 import io.ktor.client.call.body
@@ -16,14 +19,18 @@ import io.ktor.client.request.*
 import io.ktor.client.statement.*
 import io.ktor.http.*
 import io.ktor.serialization.kotlinx.json.*
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.*
+import java.io.File
 import java.util.Locale
+import kotlin.random.Random
 
-// 1. Data Class Request Groq
 @Serializable
 data class GroqHiwarRequest(
     val model: String,
@@ -42,7 +49,6 @@ data class ResponseFormat(
     val type: String
 )
 
-// 2. Data Class Response Groq
 @Serializable
 data class GroqHiwarResponse(
     val choices: List<GroqChoice>? = null,
@@ -60,8 +66,7 @@ data class GroqErrorDetail(
 )
 
 class HiwarViewModel(application: Application) : AndroidViewModel(application), TextToSpeech.OnInitListener {
-    // Gunakan Groq API Key dari BuildConfig kamu (misal: GROQ_API_KEY)
-    private val apiKey = BuildConfig.GROQ_API_KEY
+    private val apiKey = BuildConfig.GROQ_API_KEY_HIWAR
 
     private val client = HttpClient(OkHttp) {
         install(ContentNegotiation) {
@@ -90,6 +95,24 @@ class HiwarViewModel(application: Application) : AndroidViewModel(application), 
     private val _currentlyPlayingText = MutableStateFlow<String?>(null)
     val currentlyPlayingText: StateFlow<String?> = _currentlyPlayingText
 
+    // User Voice Playback States
+    private var mediaPlayer: MediaPlayer? = null
+    private val _userVoicePath = MutableStateFlow<String?>(null)
+    val userVoicePath: StateFlow<String?> = _userVoicePath.asStateFlow()
+
+    private val _isPlayingUserVoice = MutableStateFlow(false)
+    val isPlayingUserVoice: StateFlow<Boolean> = _isPlayingUserVoice.asStateFlow()
+
+    private val _userVoicePosition = MutableStateFlow(0f)
+    val userVoicePosition: StateFlow<Float> = _userVoicePosition.asStateFlow()
+
+    private val _userVoiceDuration = MutableStateFlow(0f)
+    val userVoiceDuration: StateFlow<Float> = _userVoiceDuration.asStateFlow()
+
+    private val _userWaveform = MutableStateFlow<List<Float>>(emptyList())
+    val userWaveform: StateFlow<List<Float>> = _userWaveform.asStateFlow()
+
+    private var playbackTrackerJob: Job? = null
     private var _audioSpeed = 1.0f
     private var _voiceGender = "female"
 
@@ -136,6 +159,8 @@ class HiwarViewModel(application: Application) : AndroidViewModel(application), 
                 tts?.stop()
                 _currentlyPlayingText.value = null
             } else {
+                // Stop user voice if playing
+                if (_isPlayingUserVoice.value) playUserVoice()
                 tts?.speak(text, TextToSpeech.QUEUE_FLUSH, null, text)
             }
         }
@@ -173,26 +198,165 @@ class HiwarViewModel(application: Application) : AndroidViewModel(application), 
         }
     }
 
+    fun playUserVoice() {
+        val path = _userVoicePath.value ?: return
+        if (_isPlayingUserVoice.value) {
+            mediaPlayer?.pause()
+            _isPlayingUserVoice.value = false
+            playbackTrackerJob?.cancel()
+        } else {
+            // Stop TTS if playing
+            tts?.stop()
+            _currentlyPlayingText.value = null
+
+            if (mediaPlayer == null) {
+                try {
+                    mediaPlayer = MediaPlayer().apply {
+                        setDataSource(path)
+                        prepare()
+                        setOnCompletionListener {
+                            _isPlayingUserVoice.value = false
+                            _userVoicePosition.value = _userVoiceDuration.value
+                            playbackTrackerJob?.cancel()
+                        }
+                    }
+                    _userVoiceDuration.value = mediaPlayer!!.duration / 1000f
+                } catch (e: Exception) {
+                    Log.e("HiwarViewModel", "MediaPlayer Error", e)
+                    return
+                }
+            } else if (_userVoiceDuration.value > 0f && _userVoicePosition.value >= (_userVoiceDuration.value - 0.05f)) {
+                mediaPlayer?.seekTo(0)
+                _userVoicePosition.value = 0f
+            }
+            mediaPlayer?.start()
+            _isPlayingUserVoice.value = true
+            startUserVoiceTracking()
+        }
+    }
+
+    private fun startUserVoiceTracking() {
+        playbackTrackerJob?.cancel()
+        playbackTrackerJob = viewModelScope.launch {
+            while (_isPlayingUserVoice.value) {
+                mediaPlayer?.let {
+                    if (it.isPlaying) {
+                        _userVoicePosition.value = it.currentPosition / 1000f
+                    }
+                }
+                delay(50)
+            }
+        }
+    }
+
+    fun seekUserVoice(positionSec: Float) {
+        mediaPlayer?.let {
+            try {
+                it.seekTo((positionSec * 1000).toInt())
+                _userVoicePosition.value = positionSec
+            } catch (e: Exception) {
+                Log.e("HiwarViewModel", "Seek Error", e)
+            }
+        }
+    }
+
+    fun setRecordedVoice(path: String) {
+        _userVoicePath.value = path
+        _userWaveform.value = List(40) { Random.nextFloat() * 0.7f + 0.1f }
+
+        _userVoiceDuration.value = readAudioDurationSeconds(path)
+        _userVoicePosition.value = 0f
+
+        mediaPlayer?.release()
+        mediaPlayer = null
+    }
+
+    private fun readAudioDurationSeconds(path: String): Float {
+        val retriever = MediaMetadataRetriever()
+        return try {
+            retriever.setDataSource(path)
+            val durationMs = retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_DURATION)?.toLongOrNull() ?: 0L
+            durationMs / 1000f
+        } catch (e: Exception) {
+            Log.e("HiwarViewModel", "Duration read error", e)
+            0f
+        } finally {
+            retriever.release()
+        }
+    }
+
+    fun clearRecordedResponse() {
+        tts?.stop()
+        _currentlyPlayingText.value = null
+        _userVoicePath.value = null
+        _isPlayingUserVoice.value = false
+        _userVoicePosition.value = 0f
+        _userVoiceDuration.value = 0f
+        _userWaveform.value = emptyList()
+        _aiFeedback.value = null
+        mediaPlayer?.release()
+        mediaPlayer = null
+        playbackTrackerJob?.cancel()
+    }
+
+    fun showSpeechCaptureHint(language: String) {
+        _aiFeedback.value = if (language == "en") {
+            AIFeedbackData(0, "I couldn't catch your speech. Please try again.", "Speak a little closer to the mic.")
+        } else {
+            AIFeedbackData(0, "Ucapan belum tertangkap. Coba ulangi lagi.", "Dekatkan mic dan bicara lebih jelas.")
+        }
+    }
+
     fun checkHiwarResponse(question: String, userSpeech: String, moduleTitle: String, moduleContent: String) {
         if (userSpeech.isBlank()) return
+
+        val responseLanguage = Localization.responseLanguageFor(userSpeech)
 
         viewModelScope.launch {
             _isLoading.value = true
             _aiFeedback.value = null
             try {
-                val systemPrompt = """
-                    Berperanlah sebagai guru Bahasa Arab yang interaktif.
-                    Tugas utama kamu adalah menilai jawaban user yang berupa Speech-to-Text.
-                    
-                    FORMAT OUTPUT HARUS JSON MURNI DENGAN KEYS:
-                    {
-                      "score": (integer 0-100),
-                      "feedback": (string),
-                      "tips": (string)
-                    }
-                """.trimIndent()
+                val systemPrompt = if (responseLanguage == "en") {
+                    """
+                        Act as an interactive Arabic teacher.
+                        Evaluate the user's Speech-to-Text answer.
+                        Return JSON only with these keys:
+                        {
+                          "score": (integer 0-100),
+                          "feedback": (string),
+                          "tips": (string)
+                        }
+                        Write feedback and tips in English.
+                    """.trimIndent()
+                } else {
+                    """
+                        Berperanlah sebagai guru Bahasa Arab yang interaktif.
+                        Tugas utama kamu adalah menilai jawaban user yang berupa Speech-to-Text.
+                        
+                        FORMAT OUTPUT HARUS JSON MURNI DENGAN KEYS:
+                        {
+                          "score": (integer 0-100),
+                          "feedback": (string),
+                          "tips": (string)
+                        }
+                        Tulis feedback dan tips dalam Bahasa Indonesia.
+                    """.trimIndent()
+                }
 
-                val userPrompt = """
+                val userPrompt = if (responseLanguage == "en") {
+                    """
+                        Topic: "$moduleTitle"
+                        Material: "$moduleContent"
+                        
+                        User answered the question: "$question".
+                        User speech: "$userSpeech".
+                        
+                        1. Score (0-100): Evaluate pronunciation and topic accuracy generously.
+                        2. Feedback: One short encouraging or corrective sentence in English.
+                        3. Tips: One very short tip (max 10 words) for makhraj or word choice.
+                    """.trimIndent()
+                } else {
+                    """
                     Topik Materi: "$moduleTitle"
                     Isi Materi: "$moduleContent"
                     
@@ -202,7 +366,8 @@ class HiwarViewModel(application: Application) : AndroidViewModel(application), 
                     1. Skor (0-100): Nilai kemiripan bunyi & konteks topik. Berikan nilai toleran (80-100 jika benar secara konteks).
                     2. Feedback: 1 kalimat apresiasi/koreksi ringan dalam Bahasa Indonesia.
                     3. Tips: 1 tips sangat singkat (maksimal 10 kata) untuk makhraj/pilihan kata.
-                """.trimIndent()
+                    """.trimIndent()
+                }
 
                 val url = "https://api.groq.com/openai/v1/chat/completions"
 
@@ -220,36 +385,26 @@ class HiwarViewModel(application: Application) : AndroidViewModel(application), 
                     setBody(requestBody)
                 }
 
-                val responseStatus = response.status
-
-                if (responseStatus == HttpStatusCode.TooManyRequests) {
-                    _aiFeedback.value = AIFeedbackData(0, "Terlalu banyak permintaan (Limit tercapai).", "Mohon tunggu sebentar lalu coba lagi.")
+                if (response.status == HttpStatusCode.TooManyRequests) {
+                    _aiFeedback.value = AIFeedbackData(0, "Limit AI tercapai.", "Tunggu sebentar.")
                     return@launch
                 }
 
-                if (!responseStatus.isSuccess()) {
-                    _aiFeedback.value = AIFeedbackData(0, "Error dari AI (${responseStatus.value}).", "Coba lagi nanti.")
+                if (!response.status.isSuccess()) {
+                    _aiFeedback.value = AIFeedbackData(0, "Error AI.", "Coba lagi.")
                     return@launch
                 }
 
                 val groqResponse: GroqHiwarResponse = response.body()
-
-                if (groqResponse.error != null) {
-                    throw Exception(groqResponse.error.message)
-                }
-
                 val rawContent = groqResponse.choices?.firstOrNull()?.message?.content
 
                 if (!rawContent.isNullOrBlank()) {
-                    // Parsing langsung balasan string JSON dari Groq ke Data Class AIFeedbackData
                     val jsonParser = Json { ignoreUnknownKeys = true }
                     _aiFeedback.value = jsonParser.decodeFromString<AIFeedbackData>(rawContent)
-                } else {
-                    _aiFeedback.value = AIFeedbackData(0, "Gagal memproses jawaban AI.", "Coba ulangi lagi.")
                 }
             } catch (e: Exception) {
-                Log.e("HiwarViewModel", "Error AI Correction", e)
-                _aiFeedback.value = AIFeedbackData(0, "Terjadi kesalahan koneksi ke AI.", "Periksa internet dan coba lagi.")
+                Log.e("HiwarViewModel", "Error AI", e)
+                _aiFeedback.value = AIFeedbackData(0, "Gagal terhubung AI.", "Cek internet.")
             } finally {
                 _isLoading.value = false
             }
@@ -264,6 +419,7 @@ class HiwarViewModel(application: Application) : AndroidViewModel(application), 
         super.onCleared()
         tts?.stop()
         tts?.shutdown()
+        mediaPlayer?.release()
         client.close()
     }
 }

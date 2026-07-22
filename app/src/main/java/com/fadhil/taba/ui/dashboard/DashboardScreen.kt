@@ -6,6 +6,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.fadhil.taba.data.model.Module
 import com.fadhil.taba.data.settings.AppSettingsStore
@@ -18,10 +19,13 @@ import com.fadhil.taba.ui.dashboard.mufrodat.MufrodatScreen
 import com.fadhil.taba.ui.dashboard.hiwar.HiwarScreen
 import com.fadhil.taba.ui.dashboard.help.HelpScreen
 import com.fadhil.taba.ui.dashboard.settings.SettingsScreen
+import com.fadhil.taba.ui.dashboard.settings.PrivacyPolicyScreen
+import com.fadhil.taba.ui.dashboard.settings.UserDetailScreen
 import java.io.File
 
 import androidx.compose.runtime.saveable.rememberSaveable
 import com.fadhil.taba.data.local.ModuleData
+import com.fadhil.taba.ui.theme.GreenPrimary
 
 @Composable
 fun DashboardScreen(
@@ -51,7 +55,8 @@ fun DashboardScreen(
         if (file.exists()) file.absolutePath else null
     }
     val profileName = settings.displayName.takeIf { it.isNotBlank() }
-        ?: user?.userMetadata?.get("username")?.toString()
+        ?: user?.userMetadata?.get("full_name")?.toString()?.replace("\"", "")
+        ?: user?.userMetadata?.get("username")?.toString()?.replace("\"", "")
         ?: "Pengguna"
     
     val backgroundColor = Color(0xFFF9F7F2)
@@ -76,7 +81,6 @@ fun DashboardScreen(
             HiwarScreen(
                 module = module,
                 username = profileName,
-                avatarPath = avatarPath,
                 onBack = {
                     selectedModuleId = hiwarModuleId
                     currentRoute = "materi"
@@ -95,7 +99,7 @@ fun DashboardScreen(
         Scaffold(
             containerColor = backgroundColor,
             topBar = {
-                if (currentRoute != "settings" && currentRoute != "chat_ai") {
+                if (currentRoute !in listOf("materi", "settings", "chat_ai", "privacy_policy", "help", "user_detail")) {
                     TabaTopBar(
                         username = profileName,
                         avatarPath = avatarPath,
@@ -104,17 +108,25 @@ fun DashboardScreen(
                 }
             },
             bottomBar = {
-                TabaBottomBar(
-                    currentRoute = currentRoute,
-                    lang = settings.language,
-                    onNavigate = { currentRoute = it }
-                )
+                if (currentRoute !in listOf("privacy_policy", "help", "user_detail")) {
+                    TabaBottomBar(
+                        currentRoute = currentRoute,
+                        lang = settings.language,
+                        onNavigate = { currentRoute = it }
+                    )
+                }
             }
         ) { paddingValues ->
+            val isHeaderScreen = currentRoute in listOf("materi", "settings", "help", "privacy_policy", "chat_ai", "user_detail")
             Box(
                 modifier = Modifier
                     .fillMaxSize()
-                    .padding(paddingValues)
+                    .padding(
+                        top = if (isHeaderScreen) 0.dp else paddingValues.calculateTopPadding(),
+                        bottom = if (isHeaderScreen) 0.dp else paddingValues.calculateBottomPadding(),
+                        start = paddingValues.calculateStartPadding(androidx.compose.ui.unit.LayoutDirection.Ltr),
+                        end = paddingValues.calculateEndPadding(androidx.compose.ui.unit.LayoutDirection.Ltr)
+                    )
             ) {
                 when (currentRoute) {
                     "home" -> HomeScreen(
@@ -138,10 +150,9 @@ fun DashboardScreen(
                     "settings" -> SettingsScreen(
                         username = profileName,
                         avatarPath = avatarPath,
-                        onAvatarChange = { newPath ->
-                            AppSettingsStore.update(context) { it.copy(avatarPath = newPath) }
-                        },
+                        onProfileClick = { currentRoute = "user_detail" },
                         onHelpClick = { currentRoute = "help" },
+                        onPrivacyPolicyClick = { currentRoute = "privacy_policy" },
                         onSignOut = {
                             authViewModel.signOut(context) {
                                 onSignOut()
@@ -152,6 +163,23 @@ fun DashboardScreen(
                         username = profileName,
                         avatarPath = avatarPath,
                         lang = settings.language,
+                        onBack = { currentRoute = "settings" }
+                    )
+                    "privacy_policy" -> PrivacyPolicyScreen(
+                        onBack = { currentRoute = "settings" }
+                    )
+                    "user_detail" -> UserDetailScreen(
+                        userInfo = user,
+                        username = profileName,
+                        avatarPath = avatarPath,
+                        onAvatarChange = { newPath ->
+                            AppSettingsStore.update(context) { it.copy(avatarPath = newPath) }
+                        },
+                        onSignOut = {
+                            authViewModel.signOut(context) {
+                                onSignOut()
+                            }
+                        },
                         onBack = { currentRoute = "settings" }
                     )
                 }

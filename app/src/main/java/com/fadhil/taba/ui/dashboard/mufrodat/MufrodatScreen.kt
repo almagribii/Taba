@@ -18,7 +18,6 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -40,6 +39,7 @@ import com.fadhil.taba.data.model.ModuleVocabulary
 import com.fadhil.taba.ui.theme.GreenPrimary
 import com.fadhil.taba.data.settings.AppSettingsStore
 import com.fadhil.taba.data.settings.Localization
+import com.fadhil.taba.ui.dashboard.TabaHeader
 import com.fadhil.taba.ui.dashboard.materi.removeHarakat
 
 @Composable
@@ -58,6 +58,10 @@ fun MufrodatScreen(
     val aiFeedback by viewModel.aiFeedback.collectAsState()
     val isAiLoading by viewModel.isLoading.collectAsState()
     val currentlyPlaying by viewModel.currentlyPlayingText.collectAsState()
+
+    val playbackPosition by viewModel.playbackPosition.collectAsState()
+    val playbackDuration by viewModel.playbackDuration.collectAsState()
+    val waveformAmplitudes by viewModel.waveformAmplitudes.collectAsState()
     
     val module = initialModule ?: ModuleData.modules[0]
     
@@ -74,12 +78,10 @@ fun MufrodatScreen(
     
     var showSettingsSheet by remember { mutableStateOf(false) }
 
-    // Sync TTS settings
     LaunchedEffect(settings.audioSpeed, settings.voiceGender) {
         viewModel.updateTtsSettings(settings.audioSpeed, settings.voiceGender)
     }
 
-    // Mengunci orientasi berdasarkan state isLandscape
     LaunchedEffect(isLandscape) {
         activity?.requestedOrientation = if (isLandscape) {
             ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE
@@ -88,14 +90,12 @@ fun MufrodatScreen(
         }
     }
 
-    // Kembalikan ke Portrait saat keluar dari layar ini
     DisposableEffect(Unit) {
         onDispose {
             activity?.requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_PORTRAIT
         }
     }
 
-    // Launcher untuk Speech Recognition
     val speechLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.StartActivityForResult()
     ) { result ->
@@ -119,147 +119,129 @@ fun MufrodatScreen(
 
     fun formatArabic(text: String): String = if (showHarakat) text else text.removeHarakat()
 
-    Scaffold(
-        topBar = {
-            MufrodatHeader(
-                title = if (lang == "en") "Vocabulary" else "Kosa Kata",
-                onBack = onBack,
-                lang = lang,
-                onSettingsClick = { showSettingsSheet = true }
-            )
-        },
-        containerColor = backgroundColor
-    ) { paddingValues ->
-        Column(
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(GreenPrimary)
+    ) {
+        TabaHeader(
+            title = if (lang == "en") "Vocabulary" else "Kosa Kata",
+            onBack = onBack,
+            trailingAction = {
+                IconButton(onClick = { showSettingsSheet = true }) {
+                    Icon(Icons.Default.Settings, contentDescription = Localization.getString("text_settings", lang), tint = Color.White)
+                }
+            }
+        )
+
+        Surface(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(paddingValues)
-                .background(backgroundColor)
-                .verticalScroll(rememberScrollState())
+                .offset(y = (-8).dp),
+            color = backgroundColor,
+            shape = RoundedCornerShape(topStart = 18.dp, topEnd = 18.dp)
         ) {
-            Spacer(modifier = Modifier.height(16.dp))
-            
-            // Materials Info Tag (Keeping it below header as it's useful context)
-            Surface(
-                color = Color.White,
-                shape = RoundedCornerShape(12.dp),
-                modifier = Modifier.padding(horizontal = 16.dp).wrapContentWidth()
+            Column(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .verticalScroll(rememberScrollState())
+                    .padding(bottom = 32.dp)
             ) {
-                Row(
-                    modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
-                    verticalAlignment = Alignment.CenterVertically
+                Spacer(modifier = Modifier.height(16.dp))
+                
+                Surface(
+                    color = Color.White,
+                    shape = RoundedCornerShape(12.dp),
+                    modifier = Modifier.padding(horizontal = 16.dp).wrapContentWidth()
                 ) {
-                    Icon(Icons.Default.MenuBook, contentDescription = null, tint = GreenPrimary, modifier = Modifier.size(16.dp))
-                    Spacer(modifier = Modifier.width(8.dp))
-                    val moduleTitle = if (lang == "en") module.titleEn else module.title
-                    Text(
-                        text = "${settings.mufrodatMaterialsLabel}: ${formatArabic(module.arabicTitle)} / ${if (lang == "en") "In" else "Di"} $moduleTitle",
-                        fontSize = 12.sp,
-                        color = Color.Gray
-                    )
-                }
-            }
-
-            Spacer(modifier = Modifier.height(16.dp))
-            MufrodatPracticeCard(
-                vocab = currentVocab,
-                title = settings.mufrodatPracticeTitle,
-                subtitle = settings.mufrodatPracticeSubtitle,
-                lang = lang,
-                formatArabic = ::formatArabic,
-                onListenClick = {
-                    viewModel.playVoice(currentVocab.arabic)
-                },
-                onSpeakClick = {
-                    permissionLauncher.launch(Manifest.permission.RECORD_AUDIO)
-                },
-                onStarClick = {
-                    AppSettingsStore.toggleStar(context, module.id, currentVocab.arabic)
-                },
-                onNext = {
-                    if (currentVocabIndex < vocabList.size - 1) {
-                        currentVocabIndex++
-                        viewModel.resetFeedback()
-                    } else {
-                        currentVocabIndex = 0
-                        viewModel.resetFeedback()
+                    Row(
+                        modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Icon(Icons.Default.MenuBook, contentDescription = null, tint = GreenPrimary, modifier = Modifier.size(16.dp))
+                        Spacer(modifier = Modifier.width(8.dp))
+                        val moduleTitle = if (lang == "en") module.titleEn else module.title
+                        Text(
+                            text = "${settings.mufrodatMaterialsLabel}: ${formatArabic(module.arabicTitle)} / ${if (lang == "en") "In" else "Di"} $moduleTitle",
+                            fontSize = 12.sp,
+                            color = Color.Gray
+                        )
                     }
-                },
-                isPlaying = currentlyPlaying == currentVocab.arabic
-            )
-            Spacer(modifier = Modifier.height(24.dp))
-            
-            if (isAiLoading) {
-                Box(modifier = Modifier.fillMaxWidth().padding(16.dp), contentAlignment = Alignment.Center) {
-                    CircularProgressIndicator(color = GreenPrimary)
                 }
-            }
-            
-            aiFeedback?.let { feedback ->
-                AIFeedbackSection(lang, feedback)
-            }
-            
-            Spacer(modifier = Modifier.height(24.dp))
-            OtherVocabSection(
-                vocabularies = vocabList,
-                arabicTitle = formatArabic(module.arabicTitle),
-                currentVocabIndex = currentVocabIndex,
-                headingTemplate = settings.otherVocabHeadingTemplate,
-                lang = lang,
-                formatArabic = ::formatArabic,
-                onVocabClick = { index -> 
-                    currentVocabIndex = index 
-                    viewModel.resetFeedback()
-                },
-                currentlyPlayingText = currentlyPlaying,
-                onVoiceClick = { viewModel.playVoice(it) },
-                onStarClick = { AppSettingsStore.toggleStar(context, module.id, it) }
-            )
-            
-            if (showSettingsSheet) {
-                MufrodatSettingsBottomSheet(
-                    settings = settings,
-                    onDismiss = { showSettingsSheet = false },
-                    onSpeedChange = { AppSettingsStore.setAudioSpeed(context, it) },
-                    onGenderChange = { AppSettingsStore.setVoiceGender(context, it) },
-                    onHarakatChange = { AppSettingsStore.setMufrodatFullHarakat(context, it) },
-                    onLayoutChange = { AppSettingsStore.setMufrodatHorizontalLayout(context, it) },
-                    lang = lang
+
+                Spacer(modifier = Modifier.height(16.dp))
+                MufrodatPracticeCard(
+                    vocab = currentVocab,
+                    title = settings.mufrodatPracticeTitle,
+                    subtitle = settings.mufrodatPracticeSubtitle,
+                    lang = lang,
+                    formatArabic = ::formatArabic,
+                    onListenClick = {
+                        viewModel.playVoice(currentVocab.arabic)
+                    },
+                    onSpeakClick = {
+                        permissionLauncher.launch(Manifest.permission.RECORD_AUDIO)
+                    },
+                    onStarClick = {
+                        AppSettingsStore.toggleStar(context, module.id, currentVocab.arabic)
+                    },
+                    onNext = {
+                        if (currentVocabIndex < vocabList.size - 1) {
+                            currentVocabIndex++
+                            viewModel.resetFeedback()
+                        } else {
+                            currentVocabIndex = 0
+                            viewModel.resetFeedback()
+                        }
+                    },
+                    isPlaying = currentlyPlaying == currentVocab.arabic,
+                    playbackPosition = playbackPosition,
+                    playbackDuration = playbackDuration,
+                    waveformAmplitudes = waveformAmplitudes
+                )
+                Spacer(modifier = Modifier.height(24.dp))
+                
+                if (isAiLoading) {
+                    Box(modifier = Modifier.fillMaxWidth().padding(16.dp), contentAlignment = Alignment.Center) {
+                        CircularProgressIndicator(color = GreenPrimary)
+                    }
+                } else {
+                    aiFeedback?.let { feedback ->
+                        AIFeedbackSection(lang, feedback)
+                    } ?: AIFeedbackPlaceholderSection(lang)
+                }
+                
+                Spacer(modifier = Modifier.height(24.dp))
+                OtherVocabSection(
+                    vocabularies = vocabList,
+                    arabicTitle = formatArabic(module.arabicTitle),
+                    currentVocabIndex = currentVocabIndex,
+                    headingTemplate = settings.otherVocabHeadingTemplate,
+                    lang = lang,
+                    formatArabic = ::formatArabic,
+                    onVocabClick = { index -> 
+                        currentVocabIndex = index 
+                        viewModel.resetFeedback()
+                    },
+                    currentlyPlayingText = currentlyPlaying,
+                    onVoiceClick = { viewModel.playVoice(it) },
+                    onStarClick = { AppSettingsStore.toggleStar(context, module.id, it) }
                 )
             }
-            
-            Spacer(modifier = Modifier.height(100.dp))
         }
     }
-}
 
-
-@Composable
-@OptIn(ExperimentalMaterial3Api::class)
-fun MufrodatHeader(
-    title: String,
-    onBack: () -> Unit,
-    lang: String,
-    onSettingsClick: () -> Unit
-) {
-    TopAppBar(
-        title = {
-            Text(title, fontWeight = FontWeight.Bold)
-        },
-        navigationIcon = {
-            IconButton(onClick = onBack) {
-                Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = Localization.getString("back", lang))
-            }
-        },
-        actions = {
-            IconButton(onClick = onSettingsClick) {
-                Icon(Icons.Default.Settings, contentDescription = Localization.getString("text_settings", lang))
-            }
-        },
-        colors = TopAppBarDefaults.topAppBarColors(
-            containerColor = Color.White
+    if (showSettingsSheet) {
+        MufrodatSettingsBottomSheet(
+            settings = settings,
+            onDismiss = { showSettingsSheet = false },
+            onSpeedChange = { AppSettingsStore.setAudioSpeed(context, it) },
+            onGenderChange = { AppSettingsStore.setVoiceGender(context, it) },
+            onHarakatChange = { AppSettingsStore.setMufrodatFullHarakat(context, it) },
+            onLayoutChange = { AppSettingsStore.setMufrodatHorizontalLayout(context, it) },
+            lang = lang
         )
-    )
+    }
 }
 
 
@@ -274,7 +256,10 @@ fun MufrodatPracticeCard(
     onSpeakClick: () -> Unit,
     onStarClick: () -> Unit,
     onNext: () -> Unit,
-    isPlaying: Boolean = false
+    isPlaying: Boolean = false,
+    playbackPosition: Float = 0f,
+    playbackDuration: Float = 0f,
+    waveformAmplitudes: List<Float> = emptyList()
 ) {
     Surface(
         modifier = Modifier.padding(horizontal = 16.dp).fillMaxWidth(),
@@ -380,25 +365,63 @@ fun MufrodatPracticeCard(
                 
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     IconButton(
-                        onClick = onSpeakClick,
+                        onClick = onListenClick,
                         modifier = Modifier.size(44.dp).background(GreenPrimary, CircleShape)
                     ) {
-                        Icon(Icons.Default.Mic, contentDescription = null, tint = Color.White)
+                        Icon(if (isPlaying) Icons.Default.Stop else Icons.Default.VolumeUp, contentDescription = null, tint = Color.White)
                     }
                     
                     Spacer(modifier = Modifier.width(12.dp))
                     
-                    Box(modifier = Modifier.weight(1f).height(30.dp), contentAlignment = Alignment.Center) {
-                        Row(horizontalArrangement = Arrangement.spacedBy(2.dp)) {
-                            repeat(15) {
-                                Box(modifier = Modifier.width(3.dp).height((10..30).random().dp).background(GreenPrimary.copy(alpha = 0.3f), CircleShape))
-                            }
-                        }
+                    Box(modifier = Modifier.weight(1f).height(36.dp), contentAlignment = Alignment.Center) {
+                        WaveformVisualizer(
+                            amplitudes = waveformAmplitudes,
+                            isActive = isPlaying
+                        )
                     }
                     
-                    Text(text = "00:03 / 00:05", fontSize = 10.sp, color = Color.Gray)
+                    Spacer(modifier = Modifier.width(12.dp))
+
+                    val formattedElapsed = String.format("%02d:%02d", (playbackPosition / 60).toInt(), (playbackPosition % 60).toInt())
+                    val formattedDuration = String.format("%02d:%02d", (playbackDuration / 60).toInt(), (playbackDuration % 60).toInt())
+                    Text(text = "$formattedElapsed / $formattedDuration", fontSize = 10.sp, color = Color.Gray)
                 }
             }
+        }
+    }
+}
+
+@Composable
+fun WaveformVisualizer(
+    amplitudes: List<Float>,
+    isActive: Boolean,
+    progress: Float? = null
+) {
+    Row(
+        modifier = Modifier.fillMaxSize(),
+        horizontalArrangement = Arrangement.spacedBy(2.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        val bars = if (amplitudes.isEmpty()) List(30) { 0.1f } else amplitudes
+        val playedBars = progress?.let { (it.coerceIn(0f, 1f) * bars.size).toInt() } ?: -1
+        bars.forEachIndexed { index, amp ->
+            val heightFactor = when {
+                isActive -> amp
+                progress != null -> amp * 0.75f
+                else -> amp * 0.55f
+            }.coerceAtLeast(0.12f)
+            val barColor = when {
+                progress != null && index < playedBars -> Color(0xFF9CA3AF)
+                progress != null -> Color(0xFFD1D5DB)
+                isActive -> GreenPrimary
+                else -> Color.LightGray.copy(alpha = 0.5f)
+            }
+            Box(
+                modifier = Modifier
+                    .weight(1f)
+                    .fillMaxHeight(heightFactor)
+                    .background(barColor, CircleShape)
+            )
         }
     }
 }
@@ -447,6 +470,7 @@ fun AIFeedbackSection(lang: String, data: AIFeedbackData) {
                             Text(text = data.tips, fontSize = 11.sp, color = Color(0xFF166534), fontWeight = FontWeight.Medium)
                         }
                     }
+
                 }
                 
                 Box(contentAlignment = Alignment.Center, modifier = Modifier.size(64.dp)) {
@@ -459,6 +483,83 @@ fun AIFeedbackSection(lang: String, data: AIFeedbackData) {
                         strokeCap = androidx.compose.ui.graphics.StrokeCap.Round
                     )
                     Text(text = "${data.score}%", fontSize = 14.sp, fontWeight = FontWeight.ExtraBold, color = Color(0xFF166534))
+                }
+            }
+        }
+
+    }
+}
+
+@Composable
+fun AIFeedbackPlaceholderSection(lang: String) {
+    Column(modifier = Modifier.padding(horizontal = 16.dp)) {
+        Surface(
+            modifier = Modifier.fillMaxWidth(),
+            color = Color(0xFFF8FAFC),
+            shape = RoundedCornerShape(16.dp),
+            border = androidx.compose.foundation.BorderStroke(1.dp, Color(0xFFE5E7EB))
+        ) {
+            Row(
+                modifier = Modifier.padding(16.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(16.dp)
+            ) {
+                Column(modifier = Modifier.weight(1f)) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Icon(Icons.Default.SmartToy, contentDescription = null, tint = Color(0xFF64748B), modifier = Modifier.size(18.dp))
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text(
+                            text = Localization.getString("ai_feedback", lang),
+                            fontSize = 12.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = Color(0xFF64748B)
+                        )
+                    }
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Text(
+                        text = Localization.getString("feedback_placeholder_title", lang),
+                        fontSize = 16.sp,
+                        fontWeight = FontWeight.ExtraBold,
+                        color = GreenPrimary
+                    )
+                    Spacer(modifier = Modifier.height(4.dp))
+                    Text(
+                        text = Localization.getString("feedback_placeholder_body", lang),
+                        fontSize = 13.sp,
+                        color = Color.DarkGray,
+                        lineHeight = 18.sp
+                    )
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Surface(
+                        color = Color(0xFFE2E8F0),
+                        shape = RoundedCornerShape(8.dp)
+                    ) {
+                        Row(
+                            modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Icon(Icons.Default.Lightbulb, contentDescription = null, tint = Color(0xFF475569), modifier = Modifier.size(14.dp))
+                            Spacer(modifier = Modifier.width(6.dp))
+                            Text(
+                                text = Localization.getString("feedback_placeholder_hint", lang),
+                                fontSize = 11.sp,
+                                color = Color(0xFF475569),
+                                fontWeight = FontWeight.Medium
+                            )
+                        }
+                    }
+                }
+
+                Box(contentAlignment = Alignment.Center, modifier = Modifier.size(64.dp)) {
+                    CircularProgressIndicator(
+                        progress = { 0f },
+                        modifier = Modifier.size(64.dp),
+                        color = Color(0xFF94A3B8),
+                        trackColor = Color(0xFFE2E8F0),
+                        strokeWidth = 6.dp,
+                        strokeCap = androidx.compose.ui.graphics.StrokeCap.Round
+                    )
+                    Text(text = "--", fontSize = 18.sp, fontWeight = FontWeight.ExtraBold, color = Color(0xFF64748B))
                 }
             }
         }
@@ -541,7 +642,6 @@ fun MufrodatSettingsBottomSheet(
             
             Spacer(modifier = Modifier.height(24.dp))
             
-            // Audio Speed
             Text(
                 text = Localization.getString("audio_speed", lang),
                 fontSize = 14.sp,
@@ -575,7 +675,6 @@ fun MufrodatSettingsBottomSheet(
             
             Spacer(modifier = Modifier.height(16.dp))
             
-            // Voice Gender
             Text(
                 text = Localization.getString("voice_gender", lang),
                 fontSize = 14.sp,
@@ -614,7 +713,6 @@ fun MufrodatSettingsBottomSheet(
             )
             Spacer(modifier = Modifier.height(16.dp))
 
-            // Harakat (Specific to Mufrodat)
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Text(Localization.getString("show_harakat", lang), modifier = Modifier.weight(1f), fontSize = 14.sp, color = Color.Gray)
                 Switch(
@@ -626,7 +724,6 @@ fun MufrodatSettingsBottomSheet(
             
             Spacer(modifier = Modifier.height(8.dp))
             
-            // Layout / Orientation (Specific to Mufrodat)
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Text(Localization.getString("vertical_layout", lang), modifier = Modifier.weight(1f), fontSize = 14.sp, color = Color.Gray)
                 Switch(
@@ -664,12 +761,10 @@ fun VocabMiniCard(
             modifier = Modifier.padding(8.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            // Bagian Kiri: Gambar & Bintang "Terbang" di Kiri Atas
             Box(
                 modifier = Modifier.size(60.dp),
                 contentAlignment = Alignment.Center
             ) {
-                // Gambar Kuda (Langsung pasang tanpa bulatan)
                 Image(
                     painter = painterResource(id = R.drawable.kuda),
                     contentDescription = null,
@@ -677,7 +772,6 @@ fun VocabMiniCard(
                     contentScale = ContentScale.Fit
                 )
                 
-                // Ikon Bintang "Terbang" di KIRI ATAS gambar
                 IconButton(
                     onClick = { onStarClick?.invoke() },
                     modifier = Modifier
@@ -697,7 +791,6 @@ fun VocabMiniCard(
 
             Spacer(modifier = Modifier.width(8.dp))
 
-            // Bagian Kanan: Teks Arab & Terjemahan + Ikon Suara Kecil
             Column(
                 modifier = Modifier.weight(1f),
                 verticalArrangement = Arrangement.Center

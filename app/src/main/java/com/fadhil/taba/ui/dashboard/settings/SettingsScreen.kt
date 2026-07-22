@@ -34,6 +34,7 @@ import com.fadhil.taba.R
 import com.fadhil.taba.ui.theme.GreenPrimary
 import com.fadhil.taba.data.settings.AppSettingsStore
 import com.fadhil.taba.data.settings.Localization
+import com.fadhil.taba.ui.dashboard.TabaHeader
 import java.io.File
 import java.io.FileOutputStream
 
@@ -41,7 +42,7 @@ import java.io.FileOutputStream
 fun SettingsScreen(
     username: String,
     avatarPath: String?,
-    onAvatarChange: (String) -> Unit,
+    onProfileClick: () -> Unit,
     onHelpClick: () -> Unit,
     onPrivacyPolicyClick: () -> Unit,
     onSignOut: () -> Unit
@@ -57,20 +58,6 @@ fun SettingsScreen(
     var showLanguageDialog by remember { mutableStateOf(false) }
     var showAudioSpeedDialog by remember { mutableStateOf(false) }
     var showGenderDialog by remember { mutableStateOf(false) }
-
-    val launcher = rememberLauncherForActivityResult(
-        contract = ActivityResultContracts.GetContent()
-    ) { uri: Uri? ->
-        uri?.let {
-            try {
-                val inputStream = context.contentResolver.openInputStream(it)
-                val file = File(context.filesDir, "user_avatar.jpg")
-                val outputStream = FileOutputStream(file)
-                inputStream?.use { input -> outputStream.use { output -> input.copyTo(output) } }
-                onAvatarChange(file.absolutePath)
-            } catch (e: Exception) { e.printStackTrace() }
-        }
-    }
 
     if (showLanguageDialog) {
         AlertDialog(
@@ -185,113 +172,104 @@ fun SettingsScreen(
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .verticalScroll(scrollState)
-            .padding(horizontal = 16.dp, vertical = 12.dp)
+            .background(Color(0xFFF9F7F2))
     ) {
-        // Judul (Lebih Kecil)
-        Text(text = Localization.getString("settings_title", lang), fontSize = 24.sp, fontWeight = FontWeight.Bold, color = GreenPrimary)
-        Text(text = "الإعدادات", fontSize = 16.sp, color = GreenPrimary.copy(alpha = 0.7f), modifier = Modifier.padding(bottom = 16.dp))
+        TabaHeader(
+            title = Localization.getString("settings_title", lang),
+            subtitle = "الإعدادات"
+        )
 
-        // Profile Card (Lebih Kecil)
-        Surface(
+        Column(
             modifier = Modifier
-                .fillMaxWidth()
-                .clip(RoundedCornerShape(20.dp))
-                .clickable { launcher.launch("image/*") },
-            color = Color.White,
-            shape = RoundedCornerShape(20.dp),
-            border = BorderStroke(1.dp, GreenPrimary.copy(alpha = 0.05f))
+                .fillMaxSize()
+                .verticalScroll(scrollState)
+                .padding(horizontal = 16.dp)
         ) {
-            Row(modifier = Modifier.padding(12.dp), verticalAlignment = Alignment.CenterVertically) {
-                Box(modifier = Modifier.size(60.dp).clip(CircleShape)) {
-                    if (avatarPath != null) {
-                        val bitmap = remember(avatarPath) { android.graphics.BitmapFactory.decodeFile(avatarPath) }
-                        if (bitmap != null) {
-                            Image(bitmap = bitmap.asImageBitmap(), contentDescription = null, modifier = Modifier.fillMaxSize(), contentScale = ContentScale.Crop)
+            Spacer(modifier = Modifier.height(16.dp))
+
+            // Profile Card
+            Surface(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clip(RoundedCornerShape(20.dp))
+                    .clickable { onProfileClick() },
+                color = Color.White,
+                shape = RoundedCornerShape(20.dp),
+                border = BorderStroke(1.dp, GreenPrimary.copy(alpha = 0.05f))
+            ) {
+                Row(modifier = Modifier.padding(12.dp), verticalAlignment = Alignment.CenterVertically) {
+                    Box(modifier = Modifier.size(60.dp).clip(CircleShape)) {
+                        if (avatarPath != null) {
+                            val bitmap = remember(avatarPath) { android.graphics.BitmapFactory.decodeFile(avatarPath) }
+                            if (bitmap != null) {
+                                Image(bitmap = bitmap.asImageBitmap(), contentDescription = null, modifier = Modifier.fillMaxSize(), contentScale = ContentScale.Crop)
+                            }
+                        } else {
+                            Image(painter = painterResource(id = R.drawable.profile), contentDescription = null, modifier = Modifier.fillMaxSize(), contentScale = ContentScale.Crop)
                         }
-                    } else {
-                        Image(painter = painterResource(id = R.drawable.profile), contentDescription = null, modifier = Modifier.fillMaxSize(), contentScale = ContentScale.Crop)
                     }
-                }
-                Spacer(modifier = Modifier.width(12.dp))
-                Column(modifier = Modifier.weight(1f)) {
-                    Text(text = username, fontWeight = FontWeight.Bold, fontSize = 16.sp, color = GreenPrimary)
-                    Text(text = Localization.getString("active_learner", lang), color = Color.Gray, fontSize = 12.sp)
-                    Spacer(modifier = Modifier.height(2.dp))
-                    Surface(color = Color(0xFFF0FDF4), shape = RoundedCornerShape(6.dp)) {
-                        Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(horizontal = 6.dp, vertical = 1.dp)) {
-                            Icon(Icons.Default.Star, contentDescription = null, tint = Color(0xFF166534), modifier = Modifier.size(10.dp))
-                            Spacer(modifier = Modifier.width(2.dp))
-                        }
+                    Spacer(modifier = Modifier.width(12.dp))
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text(text = username, fontWeight = FontWeight.Bold, fontSize = 16.sp, color = GreenPrimary)
+                        Text(text = Localization.getString("active_learner", lang), color = Color.Gray, fontSize = 12.sp)
+
                     }
+                    Icon(Icons.Default.ChevronRight, contentDescription = null, tint = Color.Gray, modifier = Modifier.size(18.dp))
                 }
-                Icon(Icons.Default.ChevronRight, contentDescription = null, tint = Color.Gray, modifier = Modifier.size(18.dp))
             }
-        }
 
-        Spacer(modifier = Modifier.height(24.dp))
+            Spacer(modifier = Modifier.height(24.dp))
 
-        // Sections
-        SettingSectionTitle(Localization.getString("general_settings", lang))
-        Surface(modifier = Modifier.fillMaxWidth(), color = Color.White, shape = RoundedCornerShape(12.dp), border = BorderStroke(1.dp, Color(0xFFF3F4F6))) {
-            Column {
-                SettingItem(Icons.Default.Person, Localization.getString("user_profile", lang))
-                SettingDivider()
-                SettingItem(
-                    Icons.Default.Language, 
-                    Localization.getString("app_language", lang), 
-                    if (lang == "en") "English" else "Bahasa Indonesia",
-                    onClick = { showLanguageDialog = true }
-                )
-                SettingDivider()
-                SettingItem(Icons.Default.VolumeUp, Localization.getString("sound_volume", lang))
-                SettingDivider()
-                SettingSwitchItem(Icons.Default.Notifications, Localization.getString("learning_notifications", lang), isNotifEnabled) { isNotifEnabled = it }
-                SettingDivider()
-                SettingSwitchItem(Icons.Default.Mic, Localization.getString("microphone_permission", lang), isMicEnabled) { isMicEnabled = it }
-                SettingDivider()
-                SettingSwitchItem(
-                    Icons.Default.TextFormat, 
-                    Localization.getString("full_harakat_mode", lang), 
-                    isFullHarakat, 
-                    subtitle = Localization.getString("full_harakat_subtitle", lang)
-                ) { AppSettingsStore.setFullHarakat(context, it) }
-                SettingDivider()
-                SettingItem(Icons.Default.BarChart, Localization.getString("progress_history", lang))
+            // Sections
+            SettingSectionTitle(Localization.getString("general_settings", lang))
+            Surface(modifier = Modifier.fillMaxWidth(), color = Color.White, shape = RoundedCornerShape(12.dp), border = BorderStroke(1.dp, Color(0xFFF3F4F6))) {
+                Column {
+                    SettingDivider()
+                    SettingItem(
+                        Icons.Default.Language, 
+                        Localization.getString("app_language", lang), 
+                        if (lang == "en") "English" else "Bahasa Indonesia",
+                        onClick = { showLanguageDialog = true }
+                    )
+                    SettingDivider()
+                    SettingItem(
+                        Icons.Default.Speed,
+                        Localization.getString("audio_speed", lang),
+                        "${settings.audioSpeed}x",
+                        onClick = { showAudioSpeedDialog = true }
+                    )
+                    SettingDivider()
+                    SettingItem(
+                        Icons.Default.Wc,
+                        Localization.getString("voice_gender", lang),
+                        if (settings.voiceGender == "male") Localization.getString("male", lang) else Localization.getString("female", lang),
+                        onClick = { showGenderDialog = true }
+                    )
+                    SettingDivider()
+                    SettingSwitchItem(Icons.Default.Mic, Localization.getString("microphone_permission", lang), isMicEnabled) { isMicEnabled = it }
+                    SettingDivider()
+                    SettingSwitchItem(
+                        Icons.Default.TextFormat, 
+                        Localization.getString("full_harakat_mode", lang), 
+                        isFullHarakat, 
+                        subtitle = Localization.getString("full_harakat_subtitle", lang)
+                    ) { AppSettingsStore.setFullHarakat(context, it) }
+                    SettingDivider()
+                }
             }
-        }
 
-        Spacer(modifier = Modifier.height(16.dp))
-        SettingSectionTitle(Localization.getString("learning_preferences", lang))
-        Surface(modifier = Modifier.fillMaxWidth(), color = Color.White, shape = RoundedCornerShape(12.dp), border = BorderStroke(1.dp, Color(0xFFF3F4F6))) {
-            Column {
-                SettingItem(
-                    Icons.Default.Speed, 
-                    Localization.getString("audio_speed", lang), 
-                    "${settings.audioSpeed}x",
-                    onClick = { showAudioSpeedDialog = true }
-                )
-                SettingDivider()
-                SettingItem(
-                    Icons.Default.Wc, 
-                    Localization.getString("voice_gender", lang), 
-                    if (settings.voiceGender == "male") Localization.getString("male", lang) else Localization.getString("female", lang),
-                    onClick = { showGenderDialog = true }
-                )
+            Spacer(modifier = Modifier.height(16.dp))
+            Surface(modifier = Modifier.fillMaxWidth(), color = Color.White, shape = RoundedCornerShape(12.dp), border = BorderStroke(1.dp, Color(0xFFF3F4F6))) {
+                Column {
+                    SettingItem(Icons.Default.Help, Localization.getString("help", lang), onClick = onHelpClick)
+                    SettingDivider()
+                    SettingItem(Icons.Default.PrivacyTip, Localization.getString("privacy_policy", lang), onClick = onPrivacyPolicyClick)
+                    SettingDivider()
+                    SettingItem(icon = Icons.AutoMirrored.Filled.Logout, title = Localization.getString("sign_out", lang), textColor = Color(0xFFEF4444), onClick = onSignOut)
+                }
             }
+            Spacer(modifier = Modifier.height(32.dp))
         }
-
-        Spacer(modifier = Modifier.height(16.dp))
-        Surface(modifier = Modifier.fillMaxWidth(), color = Color.White, shape = RoundedCornerShape(12.dp), border = BorderStroke(1.dp, Color(0xFFF3F4F6))) {
-            Column {
-                SettingItem(Icons.Default.Help, Localization.getString("help", lang), onClick = onHelpClick)
-                SettingDivider()
-                SettingItem(Icons.Default.PrivacyTip, Localization.getString("privacy_policy", lang), onClick = onPrivacyPolicyClick)
-                SettingDivider()
-                SettingItem(icon = Icons.AutoMirrored.Filled.Logout, title = Localization.getString("sign_out", lang), textColor = Color(0xFFEF4444), onClick = onSignOut)
-            }
-        }
-        Spacer(modifier = Modifier.height(32.dp))
     }
 }
 

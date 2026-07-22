@@ -4,6 +4,7 @@ import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.fadhil.taba.BuildConfig
+import com.fadhil.taba.data.settings.Localization
 import io.ktor.client.*
 import io.ktor.client.call.*
 import io.ktor.client.engine.okhttp.*
@@ -23,7 +24,8 @@ import kotlinx.serialization.json.Json
 data class ChatMessage(
     val text: String,
     val isUser: Boolean,
-    val time: String = ""
+    val time: String = "",
+    val shouldAnimate: Boolean = false
 )
 
 // 2. Data Class Request Groq (Format OpenAI)
@@ -71,22 +73,29 @@ class ChatAiViewModel : ViewModel() {
     }
 
     private val _messages = MutableStateFlow<List<ChatMessage>>(listOf(
-        ChatMessage("Ahlan! Saya adalah asisten AI TABA. Ada yang bisa saya bantu dalam belajar Bahasa Arab hari ini?", false, "Now")
+        ChatMessage("Ahlan! Saya adalah asisten AI TABA. / Hello! I'm TABA AI. Ada yang bisa saya bantu dalam belajar Bahasa Arab hari ini?", false, "Now", shouldAnimate = true)
     ))
     val messages: StateFlow<List<ChatMessage>> = _messages
 
     private val _isLoading = MutableStateFlow(false)
     val isLoading: StateFlow<Boolean> = _isLoading
 
-    private val systemInstructionText = "Berperanlah sebagai asisten cerdas TABA yang ahli dalam Bahasa Arab. Berikan jawaban yang ramah, edukatif, dan memotivasi user untuk belajar. Jika user bertanya hal di luar belajar bahasa, arahkan kembali dengan sopan. Jawaban harus ringkas dan mudah dipahami."
+    private fun systemInstructionTextFor(userText: String): String {
+        return if (Localization.prefersEnglishResponse(userText)) {
+            "Act as TABA's intelligent Arabic learning assistant. Reply in English, keep the answer friendly, educational, and motivating. If the user asks something outside language learning, politely redirect them back to learning Arabic. Keep the answer concise and easy to understand."
+        } else {
+            "Berperanlah sebagai asisten cerdas TABA yang ahli dalam Bahasa Arab. Berikan jawaban yang ramah, edukatif, dan memotivasi user untuk belajar. Jika user bertanya hal di luar belajar bahasa, arahkan kembali dengan sopan. Jawaban harus ringkas dan mudah dipahami."
+        }
+    }
 
     private fun getCurrentTime(): String = java.text.SimpleDateFormat("HH:mm", java.util.Locale.getDefault()).format(java.util.Date())
 
     fun sendMessage(userText: String) {
         if (userText.isBlank()) return
 
+        val englishMode = Localization.prefersEnglishResponse(userText)
         val currentMessages = _messages.value.toMutableList()
-        currentMessages.add(ChatMessage(userText, true, getCurrentTime()))
+        currentMessages.add(ChatMessage(userText, true, getCurrentTime(), shouldAnimate = false))
         _messages.value = currentMessages
 
         viewModelScope.launch {
@@ -99,7 +108,7 @@ class ChatAiViewModel : ViewModel() {
                 val requestBody = GroqRequest(
                     model = "llama-3.3-70b-versatile", // Model cepat, cerdas, & gratis
                     messages = listOf(
-                        GroqMessage(role = "system", content = systemInstructionText),
+                        GroqMessage(role = "system", content = systemInstructionTextFor(userText)),
                         GroqMessage(role = "user", content = userText)
                     )
                 )
@@ -116,18 +125,33 @@ class ChatAiViewModel : ViewModel() {
                 }
 
                 val aiResponse = response.choices?.firstOrNull()?.message?.content
-                    ?: "Maaf, sistem AI tidak memberikan jawaban."
+                    ?: if (englishMode) "Sorry, the AI did not return a response." else "Maaf, sistem AI tidak memberikan jawaban."
 
                 val updatedMessages = _messages.value.toMutableList()
-                updatedMessages.add(ChatMessage(aiResponse, false, getCurrentTime()))
+                updatedMessages.add(ChatMessage(aiResponse, false, getCurrentTime(), shouldAnimate = true))
                 _messages.value = updatedMessages
             } catch (e: Exception) {
                 Log.e("ChatAiViewModel", "Error sending message", e)
                 val updatedMessages = _messages.value.toMutableList()
-                updatedMessages.add(ChatMessage("Terjadi kesalahan: ${e.localizedMessage}", false))
+                val errorText = if (englishMode) {
+                    "An error occurred: ${e.localizedMessage}"
+                } else {
+                    "Terjadi kesalahan: ${e.localizedMessage}"
+                }
+                updatedMessages.add(ChatMessage(errorText, false, shouldAnimate = true))
                 _messages.value = updatedMessages
             } finally {
                 _isLoading.value = false
+            }
+        }
+    }
+
+    fun markMessageAsAnimated(index: Int) {
+        val currentMessages = _messages.value.toMutableList()
+        if (index in currentMessages.indices) {
+            if (currentMessages[index].shouldAnimate) {
+                currentMessages[index] = currentMessages[index].copy(shouldAnimate = false)
+                _messages.value = currentMessages
             }
         }
     }

@@ -8,6 +8,30 @@ object Localization {
         }
     }
 
+    fun prefersEnglishResponse(text: String): Boolean {
+        val normalized = text.lowercase()
+        val tokens = Regex("[a-z']+").findAll(normalized).map { it.value }.toList()
+        if (tokens.isEmpty()) return false
+
+        val englishMarkers = setOf(
+            "the", "and", "you", "are", "what", "how", "why", "please", "thanks",
+            "thank", "hello", "hi", "i", "to", "of", "for", "is", "it", "this", "that"
+        )
+        val indonesianMarkers = setOf(
+            "yang", "dan", "tidak", "apa", "bagaimana", "saya", "kami", "mereka",
+            "untuk", "dengan", "ini", "itu", "tolong", "terima", "kasih", "halo"
+        )
+
+        val englishScore = tokens.count { it in englishMarkers }
+        val indonesianScore = tokens.count { it in indonesianMarkers }
+
+        return englishScore > indonesianScore
+    }
+
+    fun responseLanguageFor(text: String, defaultLanguage: String = "in"): String {
+        return if (defaultLanguage == "en" || prefersEnglishResponse(text)) "en" else "in"
+    }
+
     private val inStrings = mapOf(
         "settings_title" to "Pengaturan",
         "active_learner" to "Pembelajar Aktif",
@@ -46,11 +70,16 @@ object Localization {
         "home" to "Beranda",
         "materi" to "Materi",
         "chat_ai" to "Tanya AI",
+        "chat_empty_title" to "Siap mulai obrolan",
+        "chat_empty_body" to "Ketik pertanyaanmu atau kirim voice note. AI akan menjawab dalam bahasa yang kamu pakai.",
         "settings" to "Pengaturan",
         "listen" to "Dengarkan",
         "speak" to "Ucapkan",
         "next" to "Berikutnya",
         "ai_feedback" to "Umpan Balik AI",
+        "feedback_placeholder_title" to "Belum ada evaluasi",
+        "feedback_placeholder_body" to "Rekam atau kirim jawaban dulu, lalu AI akan memberikan umpan balik.",
+        "feedback_placeholder_hint" to "AI akan menilai setelah jawaban masuk",
         "see_all" to "Lihat Semua >",
         "ai_note" to "Fitur AI memerlukan koneksi internet",
         "pronunciation" to "Pelafalan",
@@ -59,14 +88,14 @@ object Localization {
         "no_materi_found" to "Materi tidak ditemukan",
         "exercises_completed" to "%d/5 latihan selesai",
         "hiwar_practice" to "Latihan Percakapan",
-        "hiwar_headline" to "Berlatih dengan AI untuk meningkatkan kemampuan berbicara.",
+        "hiwar_headline" to "Latihan berbicara dengan AI.",
         "conversation" to "Percakapan",
         "answer_voice" to "Jawab dengan Voice Note",
         "previous" to "Sebelumnya",
         "current_topic" to "Topik Saat Ini",
         "hiwar_title" to "Al-Hiwar",
         "hiwar_subtitle" to "Bicara interaktif dengan bantuan AI",
-        "chat_ai_hint" to "Tanya Taba AI (Indo/Inggris/Arab)..."
+        "chat_ai_hint" to "Tanya Taba AI..."
     )
 
     private val enStrings = mapOf(
@@ -107,11 +136,16 @@ object Localization {
         "home" to "Home",
         "materi" to "Lessons",
         "chat_ai" to "Ask AI",
+        "chat_empty_title" to "Ready to start chatting",
+        "chat_empty_body" to "Type your question or send a voice note. AI will reply in the language you use.",
         "settings" to "Settings",
         "listen" to "Listen",
         "speak" to "Speak",
         "next" to "Next",
         "ai_feedback" to "AI Feedback",
+        "feedback_placeholder_title" to "No evaluation yet",
+        "feedback_placeholder_body" to "Send your answer first, then AI will give feedback.",
+        "feedback_placeholder_hint" to "AI will review after your answer is submitted",
         "see_all" to "See All >",
         "ai_note" to "AI features require internet connection",
         "pronunciation" to "Pronunciation",
@@ -127,6 +161,6 @@ object Localization {
         "current_topic" to "Current Topic",
         "hiwar_title" to "Al-Hiwar",
         "hiwar_subtitle" to "Speak interactively with AI assistance",
-        "chat_ai_hint" to "Ask Taba AI (Eng/Indo/Ar)..."
+        "chat_ai_hint" to "Ask Taba AI..."
     )
 }

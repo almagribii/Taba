@@ -8,11 +8,11 @@ import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
+import androidx.compose.foundation.basicMarquee
 import androidx.compose.foundation.border
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -28,13 +28,15 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.painterResource
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
+import kotlinx.coroutines.delay
+import java.text.BreakIterator
 import com.fadhil.taba.R
 import com.fadhil.taba.data.settings.AppSettingsStore
 import com.fadhil.taba.data.settings.Localization
+import com.fadhil.taba.ui.dashboard.TabaHeader
 import com.fadhil.taba.ui.theme.GreenPrimary
 
 @Composable
@@ -71,7 +73,7 @@ fun ChatAiScreen(
         if (isGranted) {
             val intent = Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH).apply {
                 putExtra(RecognizerIntent.EXTRA_LANGUAGE_MODEL, RecognizerIntent.LANGUAGE_MODEL_FREE_FORM)
-                putExtra(RecognizerIntent.EXTRA_LANGUAGE, if (lang == "ar") "ar-SA" else "id-ID")
+                putExtra(RecognizerIntent.EXTRA_LANGUAGE, if (lang == "en") "en-US" else "id-ID")
             }
             speechLauncher.launch(intent)
         }
@@ -80,144 +82,114 @@ fun ChatAiScreen(
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .background(Color(0xFFF9F7F2))
+            .background(GreenPrimary)
     ) {
-        // Custom Header
+        TabaHeader(
+            title = "Taba AI",
+            subtitle = if (isLoading) "Sedang mengetik..." else "Online"
+        )
+
+        // Main Surface overlapping header slightly
         Surface(
-            modifier = Modifier.fillMaxWidth(),
-            color = Color.White,
-            shadowElevation = 2.dp
+            modifier = Modifier
+                .fillMaxSize()
+                .offset(y = (-8).dp),
+            color = Color(0xFFF9F7F2),
+            shape = RoundedCornerShape(topStart = 18.dp, topEnd = 18.dp)
         ) {
-            Row(
-                modifier = Modifier
-                    .padding(horizontal = 16.dp, vertical = 12.dp)
-                    .statusBarsPadding(),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Box(
+            Column(modifier = Modifier.fillMaxSize()) {
+                LazyColumn(
+                    state = listState,
                     modifier = Modifier
-                        .size(44.dp)
-                        .clip(CircleShape)
-                        .background(Color(0xFFF0FDF4))
-                        .border(1.dp, Color(0xFFDCFCE7), CircleShape),
-                    contentAlignment = Alignment.Center
+                        .weight(1f)
+                        .fillMaxWidth(),
+                    contentPadding = PaddingValues(16.dp),
+                    verticalArrangement = Arrangement.spacedBy(16.dp)
                 ) {
-                    Image(
-                        painter = painterResource(id = R.drawable.sholat),
-                        contentDescription = null,
-                        modifier = Modifier.size(32.dp)
-                    )
-                }
-                
-                Spacer(modifier = Modifier.width(12.dp))
-                
-                Column {
-                    Text(
-                        text = "Taba AI",
-                        fontSize = 17.sp,
-                        fontWeight = FontWeight.Bold,
-                        color = GreenPrimary
-                    )
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        Surface(
-                            modifier = Modifier.size(8.dp),
-                            shape = CircleShape,
-                            color = if (isLoading) Color(0xFFEAB308) else Color(0xFF22C55E)
-                        ) {}
-                        Spacer(modifier = Modifier.width(6.dp))
-                        Text(
-                            text = if (isLoading) "Sedang mengetik..." else "Online",
-                            fontSize = 12.sp,
-                            color = Color.Gray
+                    itemsIndexed(messages) { index, message ->
+                        ModernChatBubble(
+                            message = message,
+                            avatarPath = avatarPath,
+                            onAnimationComplete = {
+                                viewModel.markMessageAsAnimated(index)
+                            }
                         )
                     }
                 }
-            }
-        }
 
-        // Chat Conversation
-        LazyColumn(
-            state = listState,
-            modifier = Modifier
-                .weight(1f)
-                .fillMaxWidth(),
-            contentPadding = PaddingValues(16.dp),
-            verticalArrangement = Arrangement.spacedBy(16.dp)
-        ) {
-            items(messages) { message ->
-                ModernChatBubble(
-                    message = message,
-                    avatarPath = avatarPath
-                )
-            }
-        }
+                if (messages.size <= 1) {
+                    ChatEmptyStateCard(lang, modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp))
+                }
 
-        // Input Bar
-        Surface(
-            modifier = Modifier.fillMaxWidth(),
-            color = Color.White,
-            shadowElevation = 8.dp
-        ) {
-            Row(
-                modifier = Modifier
-                    .padding(horizontal = 12.dp, vertical = 8.dp)
-                    .navigationBarsPadding()
-                    .imePadding(),
-                verticalAlignment = Alignment.Bottom
-            ) {
-                OutlinedTextField(
-                    value = inputText,
-                    onValueChange = { inputText = it },
-                    placeholder = { 
-                        Text(
-                            Localization.getString("chat_ai_hint", lang).ifEmpty { "Tanya Taba AI..." },
-                            fontSize = 14.sp,
-                            color = Color.Gray
-                        ) 
-                    },
-                    modifier = Modifier
-                        .weight(1f)
-                        .padding(vertical = 4.dp),
-                    shape = RoundedCornerShape(24.dp),
-                    trailingIcon = {
-                        IconButton(onClick = {
-                            permissionLauncher.launch(Manifest.permission.RECORD_AUDIO)
-                        }) {
-                            Icon(Icons.Default.Mic, contentDescription = null, tint = GreenPrimary)
-                        }
-                    },
-                    colors = OutlinedTextFieldDefaults.colors(
-                        focusedContainerColor = Color(0xFFF9FAFB),
-                        unfocusedContainerColor = Color(0xFFF9FAFB),
-                        focusedBorderColor = GreenPrimary.copy(alpha = 0.5f),
-                        unfocusedBorderColor = Color.Transparent
-                    ),
-                    maxLines = 5
-                )
-                
-                Spacer(modifier = Modifier.width(8.dp))
-                
-                IconButton(
-                    onClick = {
-                        if (inputText.isNotBlank()) {
-                            viewModel.sendMessage(inputText)
-                            inputText = ""
-                        }
-                    },
-                    modifier = Modifier
-                        .padding(bottom = 4.dp)
-                        .size(48.dp)
-                        .background(
-                            if (inputText.isNotBlank()) GreenPrimary else Color(0xFFE5E7EB),
-                            CircleShape
-                        )
+                // Input Bar
+                Surface(
+                    modifier = Modifier.fillMaxWidth(),
+                    color = Color.White,
+                    shadowElevation = 8.dp
                 ) {
-                    Icon(
-                        imageVector = Icons.AutoMirrored.Filled.Send,
-                        contentDescription = "Send",
-                        tint = Color.White,
-                        modifier = Modifier.size(20.dp)
-                    )
+                    Row(
+                        modifier = Modifier
+                            
+                            .padding(horizontal = 12.dp, vertical = 8.dp)
+                            .navigationBarsPadding()
+                            .imePadding(),
+                        verticalAlignment = Alignment.Bottom
+                    ) {
+                        OutlinedTextField(
+                            value = inputText,
+                            onValueChange = { inputText = it },
+                            placeholder = { 
+                                Text(
+                                    Localization.getString("chat_ai_hint", lang).ifEmpty { "Tanya Taba AI..." },
+                                    fontSize = 14.sp,
+                                    color = Color.Gray
+                                ) 
+                            },
+                            modifier = Modifier
+                                .weight(1f)
+                                .padding(vertical = 4.dp),
+                            shape = RoundedCornerShape(24.dp),
+                            trailingIcon = {
+                                IconButton(onClick = {
+                                    permissionLauncher.launch(Manifest.permission.RECORD_AUDIO)
+                                }) {
+                                    Icon(Icons.Default.Mic, contentDescription = null, tint = GreenPrimary)
+                                }
+                            },
+                            colors = OutlinedTextFieldDefaults.colors(
+                                focusedContainerColor = Color(0xFFF9FAFB),
+                                unfocusedContainerColor = Color(0xFFF9FAFB),
+                                focusedBorderColor = GreenPrimary.copy(alpha = 0.5f),
+                                unfocusedBorderColor = Color.Transparent
+                            ),
+                            maxLines = 5
+                        )
+                        
+                        Spacer(modifier = Modifier.width(8.dp))
+                        
+                        IconButton(
+                            onClick = {
+                                if (inputText.isNotBlank()) {
+                                    viewModel.sendMessage(inputText)
+                                    inputText = ""
+                                }
+                            },
+                            modifier = Modifier
+                                .padding(bottom = 4.dp)
+                                .size(48.dp)
+                                .background(
+                                    if (inputText.isNotBlank()) GreenPrimary else Color(0xFFE5E7EB),
+                                    CircleShape
+                                )
+                        ) {
+                            Icon(
+                                imageVector = Icons.AutoMirrored.Filled.Send,
+                                contentDescription = "Send",
+                                tint = Color.White,
+                                modifier = Modifier.size(20.dp)
+                            )
+                        }
+                    }
                 }
             }
         }
@@ -225,9 +197,39 @@ fun ChatAiScreen(
 }
 
 @Composable
+fun ChatEmptyStateCard(lang: String, modifier: Modifier = Modifier) {
+    Surface(
+        modifier = modifier.fillMaxWidth(),
+        color = Color.White,
+        shape = RoundedCornerShape(18.dp),
+        border = androidx.compose.foundation.BorderStroke(1.dp, Color(0xFFE5E7EB))
+    ) {
+        Column(modifier = Modifier.padding(16.dp)) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Icon(Icons.Default.Mic, contentDescription = null, tint = GreenPrimary)
+                Spacer(modifier = Modifier.width(8.dp))
+                Text(
+                    text = Localization.getString("chat_empty_title", lang),
+                    fontWeight = androidx.compose.ui.text.font.FontWeight.Bold,
+                    color = GreenPrimary
+                )
+            }
+            Spacer(modifier = Modifier.height(8.dp))
+            Text(
+                text = Localization.getString("chat_empty_body", lang),
+                fontSize = 13.sp,
+                color = Color.DarkGray,
+                lineHeight = 18.sp
+            )
+        }
+    }
+}
+
+@Composable
 fun ModernChatBubble(
     message: ChatMessage,
-    avatarPath: String?
+    avatarPath: String?,
+    onAnimationComplete: () -> Unit = {}
 ) {
     val isUser = message.isUser
     
@@ -246,9 +248,10 @@ fun ModernChatBubble(
                 contentAlignment = Alignment.Center
             ) {
                 Image(
-                    painter = painterResource(id = R.drawable.sholat),
+                    painter = painterResource(id = R.drawable.taba),
                     contentDescription = null,
-                    modifier = Modifier.size(22.dp)
+                    modifier = Modifier.fillMaxSize(),
+                    contentScale = ContentScale.Crop
                 )
             }
             Spacer(modifier = Modifier.width(8.dp))
@@ -270,12 +273,22 @@ fun ModernChatBubble(
                 border = if (!isUser) borderStroke() else null
             ) {
                 Column(modifier = Modifier.padding(horizontal = 14.dp, vertical = 10.dp)) {
-                    Text(
-                        text = message.text,
-                        color = if (isUser) Color.White else Color.Black,
-                        fontSize = 15.sp,
-                        lineHeight = 21.sp
-                    )
+                    if (!isUser && message.shouldAnimate) {
+                        TypewriterText(
+                            text = message.text,
+                            color = Color.Black,
+                            fontSize = 15.sp,
+                            lineHeight = 21.sp,
+                            onAnimationComplete = onAnimationComplete
+                        )
+                    } else {
+                        Text(
+                            text = message.text,
+                            color = if (isUser) Color.White else Color.Black,
+                            fontSize = 15.sp,
+                            lineHeight = 21.sp
+                        )
+                    }
                     if (message.time.isNotEmpty()) {
                         Text(
                             text = message.time,
@@ -324,3 +337,38 @@ fun ModernChatBubble(
 
 @Composable
 fun borderStroke() = androidx.compose.foundation.BorderStroke(0.5.dp, Color(0xFFF3F4F6))
+
+@Composable
+fun TypewriterText(
+    text: String,
+    delayMillis: Long = 20,
+    color: Color = Color.Unspecified,
+    fontSize: androidx.compose.ui.unit.TextUnit = androidx.compose.ui.unit.TextUnit.Unspecified,
+    lineHeight: androidx.compose.ui.unit.TextUnit = androidx.compose.ui.unit.TextUnit.Unspecified,
+    onAnimationComplete: () -> Unit = {}
+) {
+    var displayedText by remember { mutableStateOf("") }
+
+    LaunchedEffect(text) {
+        displayedText = ""
+        val iterator = BreakIterator.getCharacterInstance()
+        iterator.setText(text)
+        var start = iterator.first()
+        var end = iterator.next()
+
+        while (end != BreakIterator.DONE) {
+            displayedText += text.substring(start, end)
+            delay(delayMillis)
+            start = end
+            end = iterator.next()
+        }
+        onAnimationComplete()
+    }
+
+    Text(
+        text = displayedText,
+        color = color,
+        fontSize = fontSize,
+        lineHeight = lineHeight
+    )
+}

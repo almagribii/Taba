@@ -34,6 +34,7 @@ import com.fadhil.taba.data.model.Module
 import com.fadhil.taba.ui.theme.GreenPrimary
 import com.fadhil.taba.data.settings.AppSettingsStore
 import com.fadhil.taba.data.settings.Localization
+import com.fadhil.taba.ui.dashboard.TabaHeader
 
 @Composable
 fun MateriScreen(
@@ -63,70 +64,86 @@ fun MateriScreen(
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .background(Color(0xFFF9F7F2))
+            .background(GreenPrimary)
     ) {
-        LazyVerticalGrid(
-            columns = GridCells.Fixed(2),
-            modifier = Modifier.fillMaxSize(),
-            contentPadding = PaddingValues(12.dp),
-            horizontalArrangement = Arrangement.spacedBy(10.dp),
-            verticalArrangement = Arrangement.spacedBy(10.dp)
-        ) {
-            item(span = { GridItemSpan(2) }) {
-                MateriBanner(bannerTitle = settings.materiBannerTitle, bannerSubtitle = settings.materiBannerSubtitle)
-            }
+        TabaHeader(
+            title = Localization.getString("materi", lang),
+            subtitle = "المواد الدراسية"
+        )
 
-            item(span = { GridItemSpan(2) }) {
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(vertical = 2.dp),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    OutlinedTextField(
-                        value = searchQuery,
-                        onValueChange = { searchQuery = it },
-                        placeholder = { Text(settings.searchPlaceholder, color = Color.Gray) },
-                        leadingIcon = { Icon(Icons.Default.Search, contentDescription = null, tint = Color.Gray) },
+        Surface(
+            modifier = Modifier
+                .fillMaxSize()
+                .offset(y = (-8).dp),
+            color = Color(0xFFF9F7F2),
+            shape = RoundedCornerShape(topStart = 18.dp, topEnd = 18.dp)
+        ) {
+            LazyVerticalGrid(
+                columns = GridCells.Fixed(2),
+                modifier = Modifier.fillMaxSize(),
+                contentPadding = PaddingValues(start = 12.dp, end = 12.dp, top = 12.dp, bottom = 80.dp), // Added bottom padding for bottom bar
+                horizontalArrangement = Arrangement.spacedBy(10.dp),
+                verticalArrangement = Arrangement.spacedBy(10.dp)
+            ) {
+                item(span = { GridItemSpan(2) }) {
+                    MateriBanner(bannerTitle = settings.materiBannerTitle, bannerSubtitle = settings.materiBannerSubtitle)
+                }
+
+                item(span = { GridItemSpan(2) }) {
+                    Row(
                         modifier = Modifier
-                            .weight(1f)
-                            .height(52.dp),
-                        shape = RoundedCornerShape(12.dp),
-                        colors = OutlinedTextFieldDefaults.colors(
-                            focusedContainerColor = Color.White,
-                            unfocusedContainerColor = Color.White,
-                            focusedBorderColor = Color(0xFFF3F4F6),
-                            unfocusedBorderColor = Color(0xFFF3F4F6)
-                        )
-                    )
-                    Spacer(modifier = Modifier.width(12.dp))
-                    Surface(
-                        modifier = Modifier
-                            .size(52.dp)
-                            .clickable { },
-                        shape = RoundedCornerShape(12.dp),
-                        color = Color.White,
-                        border = BorderStroke(1.dp, Color(0xFFF3F4F6))
+                            .fillMaxWidth()
+                            .padding(vertical = 2.dp),
+                        verticalAlignment = Alignment.CenterVertically
                     ) {
-                        Box(contentAlignment = Alignment.Center) {
-                            Icon(Icons.Default.FilterList, contentDescription = "Filter", tint = GreenPrimary)
+                        OutlinedTextField(
+                            value = searchQuery,
+                            onValueChange = { searchQuery = it },
+                            placeholder = { Text(settings.searchPlaceholder, color = Color.Gray) },
+                            leadingIcon = { Icon(Icons.Default.Search, contentDescription = null, tint = Color.Gray) },
+                            modifier = Modifier
+                                .weight(1f)
+                                .height(52.dp),
+                            shape = RoundedCornerShape(12.dp),
+                            colors = OutlinedTextFieldDefaults.colors(
+                                focusedContainerColor = Color.White,
+                                unfocusedContainerColor = Color.White,
+                                focusedBorderColor = Color(0xFFF3F4F6),
+                                unfocusedBorderColor = Color(0xFFF3F4F6)
+                            )
+                        )
+                        Spacer(modifier = Modifier.width(12.dp))
+                        Surface(
+                            modifier = Modifier
+                                .size(52.dp)
+                                .clickable { },
+                            shape = RoundedCornerShape(12.dp),
+                            color = Color.White,
+                            border = BorderStroke(1.dp, Color(0xFFF3F4F6))
+                        ) {
+                            Box(contentAlignment = Alignment.Center) {
+                                Icon(Icons.Default.FilterList, contentDescription = "Filter", tint = GreenPrimary)
+                            }
                         }
                     }
                 }
-            }
 
-            // Grid Module Cards
-            if (filteredModules.isEmpty()) {
-                item(span = { GridItemSpan(2) }) {
-                    Text(
-                        text = Localization.getString("no_materi_found", lang),
-                        color = Color.Gray,
-                        modifier = Modifier.fillMaxWidth().padding(vertical = 24.dp)
-                    )
+                // Grid Module Cards
+                if (filteredModules.isEmpty()) {
+                    item(span = { GridItemSpan(2) }) {
+                        Text(
+                            text = Localization.getString("no_materi_found", lang),
+                            color = Color.Gray,
+                            modifier = Modifier.fillMaxWidth().padding(vertical = 24.dp)
+                        )
+                    }
+                } else {
+                    items(filteredModules) { module ->
+                        ModuleCardNew(module = module, lang = lang, onClick = { onModuleClick(module) })
+                    }
                 }
-            } else {
-                items(filteredModules) { module ->
-                    ModuleCardNew(module = module, lang = lang, onClick = { onModuleClick(module) })
+                
+                item(span = { GridItemSpan(2) }) {
                 }
             }
         }
@@ -154,7 +171,7 @@ fun MateriBanner(
                 )
         ) {
             Image(
-                painter = painterResource(id = R.drawable.splash),
+                painter = painterResource(id = R.drawable.banner_materi),
                 contentDescription = null,
                 modifier = Modifier
                     .fillMaxSize()
@@ -277,22 +294,22 @@ fun ModuleCardNew(module: Module, lang: String, onClick: () -> Unit) {
             
             Spacer(modifier = Modifier.height(12.dp))
             
-            Text(
-                text = Localization.getString("exercises_completed", lang).format(exerciseCount),
-                fontSize = 10.sp,
-                color = Color.Gray,
-                modifier = Modifier.padding(bottom = 4.dp)
-            )
+//            Text(
+//                text = Localization.getString("exercises_completed", lang).format(exerciseCount),
+//                fontSize = 10.sp,
+//                color = Color.Gray,
+//                modifier = Modifier.padding(bottom = 4.dp)
+//            )
+//            LinearProgressIndicator(
+//                progress = { exerciseCount / 5f },
+//                modifier = Modifier
+//                    .fillMaxWidth()
+//                    .height(6.dp)
+//                    .clip(CircleShape),
+//                color = Color(0xFF166534),
+//                trackColor = Color(0xFFF3F4F6)
+//            )
             
-            LinearProgressIndicator(
-                progress = { exerciseCount / 5f },
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(6.dp)
-                    .clip(CircleShape),
-                color = Color(0xFF166534),
-                trackColor = Color(0xFFF3F4F6)
-            )
         }
     }
 }

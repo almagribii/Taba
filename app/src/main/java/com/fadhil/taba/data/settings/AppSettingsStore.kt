@@ -96,7 +96,7 @@ object AppSettingsStore {
                     homeSectionTitle = "Material List",
                     homeSectionActionText = "See All >",
                     materiBannerTitle = "6 Interactive Materials",
-                    materiBannerSubtitle = "Vocabulary + hiwar + pronunciation practice",
+                    materiBannerSubtitle = "Vocabulary + hiwar + pronunciation",
                     searchPlaceholder = "Search material...",
                     mufrodatTitle = "Vocabulary",
                     mufrodatMaterialsLabel = "Material",

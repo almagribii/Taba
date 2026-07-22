@@ -1,45 +1,30 @@
 package com.fadhil.taba.ui.dashboard.help
 
 import android.widget.TextView
-import androidx.compose.animation.animateContentSize
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.Login
+import androidx.compose.material.icons.automirrored.filled.MenuBook
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.viewinterop.AndroidView
-import android.app.Activity
-import androidx.compose.runtime.SideEffect
-import androidx.compose.ui.platform.LocalView
-import androidx.compose.ui.graphics.toArgb
-import androidx.core.view.WindowCompat
 import androidx.core.graphics.toColorInt
 import androidx.core.text.HtmlCompat
-import com.fadhil.taba.ui.theme.GoldAccent
+import com.fadhil.taba.data.settings.Localization
+import com.fadhil.taba.ui.dashboard.TabaHeader
 import com.fadhil.taba.ui.theme.GreenPrimary
 
-data class HelpTopic(
-    val title: String,
-    val htmlContent: String,
-    val icon: ImageVector
-)
-
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun HelpScreen(
     username: String,
@@ -47,118 +32,19 @@ fun HelpScreen(
     lang: String,
     onBack: () -> Unit
 ) {
-    val helpTopics = remember {
-        listOf(
-            HelpTopic(
-                title = "Memulai",
-                htmlContent = "1. Masuk dengan akun <b>Google</b> pada layar Welcome.<br>2. Setelah berhasil masuk, Anda akan diarahkan ke <b>Beranda</b>.",
-                icon = Icons.AutoMirrored.Filled.Login
-            ),
-            HelpTopic(
-                title = "Navigasi Utama",
-                htmlContent = "• <b>Beranda</b>: Ikhtisar materi dan banner.<br>• <b>Materi</b>: Daftar modul pelajaran.<br>• <b>Tanya AI</b>: Bertanya atau berlatih percakapan interaktif.<br>• <b>Pengaturan</b>: Mengubah preferensi dan bantuan.",
-                icon = Icons.Default.Navigation
-            ),
-            HelpTopic(
-                title = "Fitur Penting",
-                htmlContent = "• <b>Latihan Mufrodat</b>: Pelajaran kosakata interaktif.<br>• <b>Al-Hiwar</b>: Latihan percakapan berbasis AI.<br>• <b>Pengaturan Suara</b>: Atur kecepatan audio di halaman Pengaturan.",
-                icon = Icons.Default.Star
-            ),
-            HelpTopic(
-                title = "Masalah Umum",
-                htmlContent = "• <b>Tidak bisa masuk</b>: Periksa koneksi internet.<br>• <b>Audio tidak berbunyi</b>: Periksa volume perangkat.<br>• <b>AI tidak merespons</b>: Pastikan internet stabil.",
-                icon = Icons.Default.ErrorOutline
-            ),
-            HelpTopic(
-                title = "Beri Masukan",
-                htmlContent = "Kirimkan saran atau laporan bug melalui email developer yang tertera di halaman <b>Tentang Aplikasi</b>.",
-                icon = Icons.Default.Feedback
-            )
-        )
-    }
+    val scrollState = rememberScrollState()
 
     Column(
         modifier = Modifier
             .fillMaxSize()
             .background(GreenPrimary)
     ) {
-        // set status bar to match header
-        val view = LocalView.current
-        if (!view.isInEditMode) {
-            SideEffect {
-                val window = (view.context as Activity).window
-                window.statusBarColor = GreenPrimary.toArgb()
-                WindowCompat.getInsetsController(window, view).isAppearanceLightStatusBars = false
-            }
-        }
+        TabaHeader(
+            title = if (lang == "en") "Help Center" else "Pusat Bantuan",
+            subtitle = if (lang == "en") "User Guide" else "Panduan Pengguna",
+            onBack = onBack
+        )
 
-        // Hero Header - three-tone angled stripes
-        Box(
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(120.dp)
-        ) {
-            // base band
-            Box(modifier = Modifier
-                .matchParentSize()
-                .background(GreenPrimary))
-
-            // three angled stripes drawn on Canvas
-            androidx.compose.foundation.Canvas(modifier = Modifier
-                .matchParentSize()) {
-                val w = size.width
-                val h = size.height
-
-                // left dominant stripe
-                val p1 = androidx.compose.ui.graphics.Path().apply {
-                    moveTo(0f, 0f)
-                    lineTo(w * 0.65f, 0f)
-                    lineTo(w * 0.45f, h)
-                    lineTo(0f, h)
-                    close()
-                }
-                drawPath(path = p1, color = GreenPrimary.copy(alpha = 0.95f))
-
-                // center thinner stripe
-                val p2 = androidx.compose.ui.graphics.Path().apply {
-                    moveTo(w * 0.5f, 0f)
-                    lineTo(w * 0.9f, 0f)
-                    lineTo(w * 0.7f, h)
-                    lineTo(w * 0.3f, h)
-                    close()
-                }
-                drawPath(path = p2, color = GreenPrimary.copy(alpha = 0.8f))
-
-                // right accent chevron
-                val p3 = androidx.compose.ui.graphics.Path().apply {
-                    moveTo(w * 0.75f, 0f)
-                    lineTo(w, 0f)
-                    lineTo(w, h)
-                    lineTo(w * 0.6f, h)
-                    close()
-                }
-                drawPath(path = p3, color = GreenPrimary.copy(alpha = 0.6f))
-            }
-
-            Row(modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 12.dp, vertical = 12.dp),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                IconButton(onClick = onBack) {
-                    Icon(Icons.Default.ArrowBack, contentDescription = "Back", tint = Color.White)
-                }
-
-                Spacer(modifier = Modifier.width(8.dp))
-
-                Column {
-                    Text(text = "Bantuan", color = Color.White, fontSize = 20.sp, fontWeight = FontWeight.SemiBold)
-                    Text(text = "Panduan", color = Color.White.copy(alpha = 0.9f), fontSize = 12.sp)
-                }
-            }
-        }
-
-        // White content Surface placed below header with small overlap
         Surface(
             modifier = Modifier
                 .fillMaxSize()
@@ -169,16 +55,101 @@ fun HelpScreen(
             Column(
                 modifier = Modifier
                     .fillMaxSize()
-                    .verticalScroll(rememberScrollState())
-                    .padding(horizontal = 16.dp, vertical = 18.dp)
+                    .verticalScroll(scrollState)
+                    .padding(horizontal = 20.dp, vertical = 24.dp)
             ) {
-                helpTopics.forEach { topic ->
-                    HelpTopicCard(topic)
-                    Spacer(modifier = Modifier.height(12.dp))
-                }
+                // Intro Section
+                HelpSection(
+                    title = if (lang == "en") "Welcome to Taba" else "Selamat Datang di Taba",
+                    icon = Icons.Default.WavingHand,
+                    htmlContent = if (lang == "en") {
+                        "Hello <b>$username</b>! Taba is designed to help you learn Arabic interactively. Follow this guide to get the most out of your learning journey."
+                    } else {
+                        "Halo <b>$username</b>! Taba dirancang untuk membantu Anda belajar bahasa Arab secara interaktif. Ikuti panduan ini untuk memaksimalkan perjalanan belajar Anda."
+                    }
+                )
 
-                Spacer(modifier = Modifier.height(16.dp))
-                
+                Spacer(modifier = Modifier.height(24.dp))
+
+                // Getting Started
+                HelpSection(
+                    title = if (lang == "en") "Getting Started" else "Memulai",
+                    icon = Icons.Default.RocketLaunch,
+                    htmlContent = if (lang == "en") {
+                        "1. Sign in with your <b>Google Account</b> on the Welcome screen.<br>2. Once logged in, you will be taken to the <b>Home</b> dashboard where you can see your learning overview."
+                    } else {
+                        "1. Masuk dengan <b>Akun Google</b> Anda pada layar Selamat Datang.<br>2. Setelah masuk, Anda akan diarahkan ke <b>Beranda</b> untuk melihat ringkasan pembelajaran Anda."
+                    }
+                )
+
+                Spacer(modifier = Modifier.height(24.dp))
+
+                // Core Navigation
+                HelpSection(
+                    title = if (lang == "en") "Core Navigation" else "Navigasi Utama",
+                    icon = Icons.Default.Explore,
+                    htmlContent = if (lang == "en") {
+                        "• <b>Home</b>: Overview of materials and featured banners.<br>" +
+                        "• <b>Lessons</b>: List of all interactive modules. Tap a module to start practicing.<br>" +
+                        "• <b>Ask AI</b>: Chat freely or practice interactive conversations with AI.<br>" +
+                        "• <b>Settings</b>: Change app language, audio speed, and profile info."
+                    } else {
+                        "• <b>Beranda</b>: Ikhtisar materi dan banner pilihan.<br>" +
+                        "• <b>Materi</b>: Daftar semua modul interaktif. Ketuk modul untuk mulai berlatih.<br>" +
+                        "• <b>Tanya AI</b>: Mengobrol bebas atau berlatih percakapan interaktif dengan AI.<br>" +
+                        "• <b>Pengaturan</b>: Ubah bahasa aplikasi, kecepatan audio, dan info profil."
+                    }
+                )
+
+                Spacer(modifier = Modifier.height(24.dp))
+
+                // Key Features
+                HelpSection(
+                    title = if (lang == "en") "Key Features" else "Fitur Unggulan",
+                    icon = Icons.AutoMirrored.Filled.MenuBook,
+                    htmlContent = if (lang == "en") {
+                        "• <b>Vocabulary (Mufrodat)</b>: Interactive cards with audio and pronunciation checking.<br>" +
+                        "• <b>Conversation (Al-Hiwar)</b>: Practice real-life scenarios with AI assistance.<br>" +
+                        "• <b>Audio Settings</b>: Adjust voice gender and playback speed to suit your pace."
+                    } else {
+                        "• <b>Kosakata (Mufrodat)</b>: Kartu interaktif dengan audio dan pengecekan pelafalan.<br>" +
+                        "• <b>Percakapan (Al-Hiwar)</b>: Berlatih skenario dunia nyata dengan bantuan AI.<br>" +
+                        "• <b>Pengaturan Audio</b>: Atur jenis suara dan kecepatan putar sesuai kenyamanan Anda."
+                    }
+                )
+
+                Spacer(modifier = Modifier.height(24.dp))
+
+                // Troubleshooting
+                HelpSection(
+                    title = if (lang == "en") "Troubleshooting" else "Masalah & Solusi",
+                    icon = Icons.Default.Info,
+                    htmlContent = if (lang == "en") {
+                        "• <b>Login Issue</b>: Check your internet connection and try again.<br>" +
+                        "• <b>No Audio</b>: Ensure device volume is up and audio permissions are granted.<br>" +
+                        "• <b>AI Unresponsive</b>: AI features require a stable internet connection."
+                    } else {
+                        "• <b>Gagal Masuk</b>: Periksa koneksi internet Anda dan coba lagi.<br>" +
+                        "• <b>Audio Mati</b>: Pastikan volume perangkat aktif dan izin audio diberikan.<br>" +
+                        "• <b>AI Tidak Merespons</b>: Fitur AI memerlukan koneksi internet yang stabil."
+                    }
+                )
+
+                Spacer(modifier = Modifier.height(24.dp))
+
+                // Feedback
+                HelpSection(
+                    title = if (lang == "en") "Give Feedback" else "Beri Masukan",
+                    icon = Icons.Default.Feedback,
+                    htmlContent = if (lang == "en") {
+                        "Have a suggestion or found a bug? Send us a message through the contact form or email the developer at the <b>About</b> page."
+                    } else {
+                        "Punya saran atau menemukan bug? Kirimkan pesan melalui formulir kontak atau email pengembang di halaman <b>Tentang</b>."
+                    }
+                )
+
+                Spacer(modifier = Modifier.height(32.dp))
+
                 Button(
                     onClick = onBack,
                     modifier = Modifier
@@ -187,79 +158,71 @@ fun HelpScreen(
                     shape = RoundedCornerShape(12.dp),
                     colors = ButtonDefaults.buttonColors(containerColor = GreenPrimary)
                 ) {
-                    Text(text = "Kembali ke Pengaturan", fontWeight = FontWeight.Bold)
+                    Text(
+                        text = Localization.getString("back", lang),
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 16.sp
+                    )
                 }
-                
-                Spacer(modifier = Modifier.height(40.dp))
+
+                Spacer(modifier = Modifier.height(48.dp))
             }
         }
     }
 }
 
 @Composable
-fun HelpTopicCard(topic: HelpTopic) {
-    var expanded by remember { mutableStateOf(false) }
-
-    ElevatedCard(
-        modifier = Modifier
-            .fillMaxWidth()
-            .animateContentSize()
-            .clickable { expanded = !expanded },
-        shape = RoundedCornerShape(16.dp),
-        colors = CardDefaults.elevatedCardColors(containerColor = Color.White)
-    ) {
-        Column(modifier = Modifier.padding(16.dp)) {
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                modifier = Modifier.fillMaxWidth()
+fun HelpSection(
+    title: String,
+    icon: ImageVector,
+    htmlContent: String
+) {
+    Column(modifier = Modifier.fillMaxWidth()) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Surface(
+                color = GreenPrimary.copy(alpha = 0.1f),
+                shape = RoundedCornerShape(8.dp),
+                modifier = Modifier.size(36.dp)
             ) {
-                Surface(
-                    shape = RoundedCornerShape(12.dp),
-                    color = GreenPrimary.copy(alpha = 0.05f),
-                    modifier = Modifier.size(40.dp)
-                ) {
-                    Box(contentAlignment = Alignment.Center) {
-                        Icon(
-                            topic.icon,
-                            contentDescription = null,
-                            tint = GreenPrimary,
-                            modifier = Modifier.size(20.dp)
-                        )
-                    }
+                Box(contentAlignment = Alignment.Center) {
+                    Icon(
+                        imageVector = icon,
+                        contentDescription = null,
+                        tint = GreenPrimary,
+                        modifier = Modifier.size(20.dp)
+                    )
                 }
-                Spacer(modifier = Modifier.width(16.dp))
-                Text(
-                    text = topic.title,
-                    fontSize = 16.sp,
-                    fontWeight = FontWeight.Bold,
-                    color = Color(0xFF1F2937),
-                    modifier = Modifier.weight(1f)
-                )
-                Icon(
-                    imageVector = if (expanded) Icons.Default.ExpandLess else Icons.Default.ExpandMore,
-                    contentDescription = null,
-                    tint = Color.Gray
-                )
             }
-
-            if (expanded) {
-                Spacer(modifier = Modifier.height(12.dp))
-                HorizontalDivider(color = Color(0xFFF3F4F6))
-                Spacer(modifier = Modifier.height(12.dp))
-                HtmlText(html = topic.htmlContent)
-            }
+            Spacer(modifier = Modifier.width(12.dp))
+            Text(
+                text = title,
+                fontSize = 18.sp,
+                fontWeight = FontWeight.Bold,
+                color = GreenPrimary
+            )
         }
+        
+        Spacer(modifier = Modifier.height(10.dp))
+        
+        HtmlText(
+            html = htmlContent,
+            modifier = Modifier.padding(start = 48.dp) // Align text with title
+        )
     }
 }
 
 @Composable
-fun HtmlText(html: String) {
+fun HtmlText(
+    html: String,
+    modifier: Modifier = Modifier
+) {
     AndroidView(
+        modifier = modifier,
         factory = { context ->
             TextView(context).apply {
                 textSize = 14f
                 setTextColor("#4B5563".toColorInt())
-                setLineSpacing(8f, 1f)
+                setLineSpacing(10f, 1.2f)
             }
         },
         update = { textView ->

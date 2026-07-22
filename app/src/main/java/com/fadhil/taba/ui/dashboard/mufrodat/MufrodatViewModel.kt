@@ -6,6 +6,7 @@ import android.util.Log
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.fadhil.taba.BuildConfig
+import com.fadhil.taba.data.settings.Localization
 import io.ktor.client.*
 import io.ktor.client.call.*
 import io.ktor.client.engine.okhttp.*
@@ -15,12 +16,16 @@ import io.ktor.client.request.*
 import io.ktor.client.statement.*
 import io.ktor.http.*
 import io.ktor.serialization.kotlinx.json.*
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.*
 import java.util.Locale
+import kotlin.random.Random
 
 @Serializable
 data class AIFeedbackData(
@@ -66,7 +71,7 @@ data class GroqErrorDetail(
 
 class MufrodatViewModel(application: Application) : AndroidViewModel(application), TextToSpeech.OnInitListener {
     // Gunakan Groq API Key dari BuildConfig kamu
-    private val apiKey = BuildConfig.GROQ_API_KEY
+    private val apiKey = BuildConfig.GROQ_API_KEY_MUFRODAT
 
     private val client = HttpClient(OkHttp) {
         install(ContentNegotiation) {
@@ -95,6 +100,17 @@ class MufrodatViewModel(application: Application) : AndroidViewModel(application
     private val _currentlyPlayingText = MutableStateFlow<String?>(null)
     val currentlyPlayingText: StateFlow<String?> = _currentlyPlayingText
 
+    // Playback and Waveform states
+    private val _playbackPosition = MutableStateFlow(0f)
+    val playbackPosition: StateFlow<Float> = _playbackPosition.asStateFlow()
+
+    private val _playbackDuration = MutableStateFlow(0f)
+    val playbackDuration: StateFlow<Float> = _playbackDuration.asStateFlow()
+
+    private val _waveformAmplitudes = MutableStateFlow<List<Float>>(emptyList())
+    val waveformAmplitudes: StateFlow<List<Float>> = _waveformAmplitudes.asStateFlow()
+
+    private var playbackJob: Job? = null
     private var _audioSpeed = 1.0f
     private var _voiceGender = "female"
 
@@ -155,30 +171,69 @@ class MufrodatViewModel(application: Application) : AndroidViewModel(application
 
                     override fun onDone(utteranceId: String?) {
                         if (_currentlyPlayingText.value == utteranceId) {
-                            _currentlyPlayingText.value = null
+                            stopPlaybackSimulation()
                         }
                     }
 
                     override fun onError(utteranceId: String?) {
-                        _currentlyPlayingText.value = null
+                        stopPlaybackSimulation()
                     }
 
                     override fun onStop(utteranceId: String?, interrupted: Boolean) {
-                        _currentlyPlayingText.value = null
+                        stopPlaybackSimulation()
                     }
                 })
             }
         }
     }
 
+    private fun stopPlaybackSimulation() {
+        _currentlyPlayingText.value = null
+        playbackJob?.cancel()
+        _playbackPosition.value = _playbackDuration.value // Mark as finished
+    }
+
     fun playVoice(text: String) {
         if (_isTtsReady.value) {
             if (_currentlyPlayingText.value == text) {
                 tts?.stop()
-                _currentlyPlayingText.value = null
+                stopPlaybackSimulation()
             } else {
+                // Estimate duration: approx 6 characters per second, adjusted by speed
+                val estimatedSeconds = (text.length / 6f) / _audioSpeed
+                _playbackDuration.value = estimatedSeconds.coerceAtLeast(1.0f)
+                _playbackPosition.value = 0f
+                
+                // Initialize waveform with some baseline random values
+                _waveformAmplitudes.value = List(30) { Random.nextFloat() * 0.5f + 0.1f }
+
                 tts?.speak(text, TextToSpeech.QUEUE_FLUSH, null, text)
+                startPlaybackSimulation()
             }
+        }
+    }
+
+    private fun startPlaybackSimulation() {
+        playbackJob?.cancel()
+        playbackJob = viewModelScope.launch {
+            val startTime = System.currentTimeMillis()
+            val totalDurationMs = (_playbackDuration.value * 1000).toLong()
+
+            while (System.currentTimeMillis() - startTime < totalDurationMs) {
+                val elapsed = (System.currentTimeMillis() - startTime) / 1000f
+                _playbackPosition.value = elapsed
+                
+                // Animate waveform: subtly shift existing amplitudes
+                val currentAmps = _waveformAmplitudes.value.toMutableList()
+                if (currentAmps.isNotEmpty()) {
+                    currentAmps.removeAt(0)
+                    currentAmps.add(Random.nextFloat() * 0.8f + 0.2f)
+                    _waveformAmplitudes.value = currentAmps
+                }
+
+                delay(100) // Update every 100ms
+            }
+            _playbackPosition.value = _playbackDuration.value
         }
     }
 
@@ -188,23 +243,50 @@ class MufrodatViewModel(application: Application) : AndroidViewModel(application
             return
         }
 
+        val responseLanguage = Localization.responseLanguageFor(userSpeech)
+
         viewModelScope.launch {
             _isLoading.value = true
             _aiFeedback.value = null // Reset feedback sebelumnya
             try {
-                val systemPrompt = """
-                    Berperanlah sebagai guru Bahasa Arab yang ahli dalam pengucapan dan makhraj.
-                    Tugas utama kamu adalah menilai hasil ucapan user dari Speech-to-Text.
-                    
-                    FORMAT OUTPUT HARUS BERUPA JSON MURNI DENGAN KEYS:
-                    {
-                      "score": (integer 0-100),
-                      "feedback": (string),
-                      "tips": (string)
-                    }
-                """.trimIndent()
+                val systemPrompt = if (responseLanguage == "en") {
+                    """
+                        Act as an expert Arabic pronunciation teacher.
+                        Evaluate the user's Speech-to-Text answer.
+                        Return JSON only with these keys:
+                        {
+                          "score": (integer 0-100),
+                          "feedback": (string),
+                          "tips": (string)
+                        }
+                        Write feedback and tips in English.
+                    """.trimIndent()
+                } else {
+                    """
+                        Berperanlah sebagai guru Bahasa Arab yang ahli dalam pengucapan dan makhraj.
+                        Tugas utama kamu adalah menilai hasil ucapan user dari Speech-to-Text.
+                        
+                        FORMAT OUTPUT HARUS BERUPA JSON MURNI DENGAN KEYS:
+                        {
+                          "score": (integer 0-100),
+                          "feedback": (string),
+                          "tips": (string)
+                        }
+                        Tulis feedback dan tips dalam Bahasa Indonesia.
+                    """.trimIndent()
+                }
 
-                val userPrompt = """
+                val userPrompt = if (responseLanguage == "en") {
+                    """
+                        User tried to pronounce this vocabulary: "$arabicWord".
+                        User speech-to-text result: "$userSpeech".
+                        
+                        1. Score (0-100): Be fair and objective by considering pronunciation and word accuracy.
+                        2. Feedback: One short encouraging or corrective sentence in English.
+                        3. Tips: One very short tip (max 7 words) for makhraj improvement.
+                    """.trimIndent()
+                } else {
+                    """
                     User mencoba mengucapkan Mufrodat: "$arabicWord".
                     Hasil suara user (STT): "$userSpeech".
                     
@@ -212,7 +294,8 @@ class MufrodatViewModel(application: Application) : AndroidViewModel(application
                     1. Skor (0-100): Berikan skor yang ADIL dan objektif dengan memperhatikan harakat dari mufrodatnya. Jika user mengucap harakat fathah tetapi seharusnya kasroh, kurangi poin dan jelaskan.
                     2. Feedback: Kalimat apresiasi atau koreksi ringan dalam Bahasa Indonesia.
                     3. Tips: 1 tips sangat singkat (maksimal 7 kata) untuk perbaikan makhraj.
-                """.trimIndent()
+                    """.trimIndent()
+                }
 
                 val url = "https://api.groq.com/openai/v1/chat/completions"
 
